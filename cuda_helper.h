@@ -54,7 +54,7 @@ extern const uint3 threadIdx;
 #endif
 
 extern cudaError_t MyStreamSynchronize(cudaStream_t stream, int situation, int thr_id);
-
+void printtemphash(int thr_id, const void *d_hash, uint32_t threads, const char *comment);
 
 #ifndef SPH_C32
 #define SPH_C32(x) ((x ## U))

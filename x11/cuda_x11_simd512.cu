@@ -561,5 +561,5 @@ void x11_simd512_cpu_hash_64(int thr_id, uint32_t threads, uint32_t startNounce,
 	x11_simd512_gpu_final_64 <<<grid, block, 0, gpustream[thr_id] >>> (threads, d_hash, d_temp4[thr_id], d_state[thr_id]);
 	CUDA_SAFE_CALL(cudaGetLastError());
 
-	//MyStreamSynchronize(NULL, order, thr_id);
+	printtemphash(thr_id, (void *)d_hash, threads, "simd");
 }
