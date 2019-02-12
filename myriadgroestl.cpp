@@ -60,7 +60,7 @@ extern int scanhash_myriad(int thr_id, uint32_t *pdata, uint32_t *ptarget,
 		{
 			applog(LOG_ERR, "intensity too high");
 			mining_has_stopped[thr_id] = true;
-			proper_exit(2);
+			proper_exit(EXIT_FAILURE);
 		}
 #endif
 		myriadgroestl_cpu_init(thr_id, throughputmax);
@@ -85,7 +85,6 @@ extern int scanhash_myriad(int thr_id, uint32_t *pdata, uint32_t *ptarget,
 		if(stop_mining) {mining_has_stopped[thr_id] = true; pthread_exit(nullptr);}
 		if(h_found[0] != 0xffffffff)
 		{
-			const uint32_t Htarg = ptarget[7];
 			uint32_t vhash64[8]={0};
 			if(opt_verify){ be32enc(&endiandata[19], h_found[0]);
 			myriadhash(vhash64, endiandata);

@@ -94,9 +94,9 @@ struct workio_cmd {
 bool opt_debug_diff = false;
 bool opt_debug_threads = false;
 bool opt_showdiff = true;
-bool opt_hwmonitor = true;
+bool opt_hwmonitor = false;
 
-static const char *algo_names[] =
+const char *algo_names[] =
 {
 	"invalid",
 	"bitcoin",
@@ -113,6 +113,7 @@ static const char *algo_names[] =
 	"jackpot",
 	"luffa",
 	"lyra2v2",
+	"lyra2v3",
 	"myr-gr",
 	"nist5",
 	"penta",
@@ -194,6 +195,7 @@ struct thr_api *thr_api = nullptr;
 int longpoll_thr_id = -1;
 int stratum_thr_id = -1;
 int api_thr_id = -1;
+int monitor_thr_id = -1;
 bool stratum_need_reset = false;
 volatile bool abort_flag = false;
 struct work_restart *work_restart = NULL;
@@ -202,6 +204,9 @@ struct stratum_ctx stratum = { 0 };
 bool stop_mining = false;
 volatile bool mining_has_stopped[MAX_GPUS];
 unsigned int cudaschedule = cudaDeviceScheduleBlockingSync;
+FILE *logfilepointer;
+char *logfilename;
+bool opt_logfile = false;
 
 pthread_mutex_t applog_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t stats_lock = PTHREAD_MUTEX_INITIALIZER;
@@ -246,7 +251,8 @@ Options:\n\
 			jackpot     Jackpot (JHA)\n\
 			keccak      Keccak-256 (Maxcoin)\n\
 			luffa       Doomcoin\n\
-			lyra2v2     VertCoin\n\
+			lyra2v2     Monacoin\n\
+            lyra2v3     Vertcoin\n\
 			myr-gr      Myriad-Groestl\n\
 			neoscrypt   neoscrypt (FeatherCoin)\n\
 			nist5       NIST5 (TalkCoin)\n\
@@ -293,6 +299,7 @@ Options:\n\
   -e                    disable extranonce\n\
   -q, --quiet           disable per-thread hashmeter output\n\
       --no-color        disable colored output\n\
+      --hwmonitor       show data like temperature, fan speed, etc.\n\
   -D, --debug           enable debug output\n\
   -P, --protocol-dump   verbose dump of protocol-level activities\n\
       --cpu-affinity    set process affinity to cpu core(s), mask 0x3 for cores 0 and 1\n\
@@ -302,6 +309,7 @@ Options:\n\
                         1: Spin\n\
                         2: Yield\n\
   -b, --api-bind=...    IP address and port number for the miner API (example: 127.0.0.1:4068)\n\
+      --logfile=FILE    create logfile\n\
   -S, --syslog          use system log for output messages\n\
       --syslog-prefix=... allow to change syslog tool name\n\
   -B, --background      run the miner in the background\n\
@@ -373,6 +381,8 @@ static struct option const options[] =
 	{"mem-clock", 1, NULL, 1071},
 	{"pstate", 1, NULL, 1072},
 	{"plimit", 1, NULL, 1073},
+	{"logfile", 1, NULL, 1074},
+	{"hwmonitor", 0, NULL, 1075},
 	{0, 0, 0, 0}
 };
 
@@ -403,7 +413,7 @@ static void affine_to_cpu_mask(int id, uint8_t mask)
 		// cpu mask
 		if(mask & (1 << i))
 		{
-			CPU_SET(i, &set); printf("%d \n", i);
+			CPU_SET(i, &set);
 		}
 	}
 	if(id == -1)
@@ -475,7 +485,6 @@ void proper_exit(int reason)
 		{
 			time_t start = time(NULL);
 			stop_mining = true;
-			applog(LOG_INFO, "stopping %d threads", opt_n_threads);
 			bool everything_stopped;
 			do
 			{
@@ -486,7 +495,6 @@ void proper_exit(int reason)
 						everything_stopped = false;
 				}
 			} while(!everything_stopped && (time(NULL) - start) < 5);
-			applog(LOG_INFO, "resetting GPUs");
 			cuda_devicereset();
 		}
 		pthread_mutex_lock(&stratum.sock_lock);
@@ -516,6 +524,8 @@ void proper_exit(int reason)
 		}
 #endif
 	}
+	if(opt_logfile)
+		fclose(logfilepointer);
 	sleep(1);
 	exit(reason);
 }
@@ -743,6 +753,7 @@ static bool submit_upstream_work(CURL *curl, struct work *work)
 				hashlog_dump_job(work->job_id);
 			}
 			free(noncestr);
+			free(ntimestr);
 			// prevent useless computing on some pools
 			g_work_time = 0;
 			restart_threads();
@@ -1025,7 +1036,7 @@ static void workio_cmd_free(struct workio_cmd *wc)
 	switch(wc->cmd)
 	{
 	case WC_SUBMIT_WORK:
-		aligned_free(wc->u.work);
+		free(wc->u.work);
 		break;
 	default: /* do nothing */
 		break;
@@ -1040,7 +1051,7 @@ static bool workio_get_work(struct workio_cmd *wc, CURL *curl)
 	struct work *ret_work;
 	int failures = 0;
 
-	ret_work = (struct work*)aligned_calloc(sizeof(*ret_work));
+	ret_work = (struct work*)calloc(1, sizeof(*ret_work));
 	if(!ret_work)
 		return false;
 
@@ -1050,7 +1061,7 @@ static bool workio_get_work(struct workio_cmd *wc, CURL *curl)
 		if(unlikely((opt_retries >= 0) && (++failures > opt_retries)))
 		{
 			applog(LOG_ERR, "json_rpc_call failed, terminating workio thread");
-			aligned_free(ret_work);
+			free(ret_work);
 			return false;
 		}
 
@@ -1062,7 +1073,7 @@ static bool workio_get_work(struct workio_cmd *wc, CURL *curl)
 
 	/* send work to requesting thread */
 	if(!tq_push(wc->thr->q, ret_work))
-		aligned_free(ret_work);
+		free(ret_work);
 
 	return true;
 }
@@ -1171,11 +1182,11 @@ static bool get_work(struct thr_info *thr, struct work *work)
 	}
 
 	/* fill out work request message */
-	wc = (struct workio_cmd *)calloc(1, sizeof(*wc));
+	wc = (struct workio_cmd *)calloc(1, sizeof(struct workio_cmd));
 	if(wc == NULL)
 	{
 		applog(LOG_ERR, "Out of memory!");
-		proper_exit(2);
+		proper_exit(EXIT_FAILURE);
 	}
 
 	wc->cmd = WC_GET_WORK;
@@ -1195,7 +1206,7 @@ static bool get_work(struct thr_info *thr, struct work *work)
 
 	/* copy returned work into storage provided by caller */
 	memcpy(work, work_heap, sizeof(*work));
-	aligned_free(work_heap);
+	free(work_heap);
 
 	return true;
 }
@@ -1204,18 +1215,18 @@ static bool submit_work(struct thr_info *thr, const struct work *work_in)
 {
 	struct workio_cmd *wc;
 	/* fill out work request message */
-	wc = (struct workio_cmd *)calloc(1, sizeof(*wc));
+	wc = (struct workio_cmd *)calloc(1, sizeof(struct workio_cmd));
 	if(wc == NULL)
 	{
 		applog(LOG_ERR, "Out of memory!");
-		proper_exit(2);
+		proper_exit(EXIT_FAILURE);
 	}
 
-	wc->u.work = (struct work *)aligned_calloc(sizeof(*work_in));
+	wc->u.work = (struct work *)calloc(1, sizeof(*work_in));
 	if(wc->u.work == NULL)
 	{
 		applog(LOG_ERR, "Out of memory!");
-		proper_exit(2);
+		proper_exit(EXIT_FAILURE);
 	}
 
 	wc->cmd = WC_SUBMIT_WORK;
@@ -1360,6 +1371,7 @@ static bool stratum_gen_work(struct stratum_ctx *sctx, struct work *work)
 		case ALGO_GROESTL:
 		case ALGO_KECCAK:
 		case ALGO_LYRA2v2:
+		case ALGO_LYRA2v3:
 			diff_to_target(work->target, sctx->job.diff / (256.0 * opt_difficulty));
 			break;
 		default:
@@ -1381,10 +1393,11 @@ static void *miner_thread(void *userdata)
 {
 	struct thr_info *mythr = (struct thr_info *)userdata;
 	int thr_id = mythr->id;
+	struct cgpu_info *cgpu = &thr_info[thr_id].gpu;
 	struct work work;
 	uint64_t loopcnt = 0;
 	uint32_t max_nonce;
-	uint32_t end_nonce = UINT32_MAX / opt_n_threads * (thr_id + 1) - (thr_id + 1);
+	uint64_t end_nonce = 0x100000000ull / opt_n_threads * (thr_id + 1) - 1;
 	bool extrajob = false;
 	char s[16];
 	int rc = 0;
@@ -1476,7 +1489,7 @@ static void *miner_thread(void *userdata)
 			pthread_mutex_lock(&g_work_lock);
 			if(loopcnt == 0 || time(NULL) >= (g_work_time + opt_scantime))
 				extrajob = true;
-			if(nonceptr[0] >= end_nonce - 0x00010000 || extrajob)
+			if(nonceptr[0] >= end_nonce - 0x00004000 || extrajob)
 			{
 				extrajob = false;
 				int loop = 0;
@@ -1494,7 +1507,7 @@ static void *miner_thread(void *userdata)
 		else
 		{
 			pthread_mutex_lock(&g_work_lock);
-			if((time(NULL) - g_work_time) >= scan_time || nonceptr[0] >= (end_nonce - 0x10000))
+			if((time(NULL) - g_work_time) >= scan_time || nonceptr[0] >= (end_nonce - 0x00004000))
 			{
 				if(opt_debug && g_work_time && !opt_quiet)
 					applog(LOG_DEBUG, "work time %u/%us nonce %x/%x", time(NULL) - g_work_time,
@@ -1550,7 +1563,7 @@ static void *miner_thread(void *userdata)
 			if(opt_debug && opt_algo == ALGO_SIA)
 				applog(LOG_DEBUG, "thread %d: high nonce = %08X", thr_id, work.data[9]);
 			memcpy(&work, &g_work, sizeof(struct work));
-			nonceptr[0] = (UINT32_MAX / opt_n_threads) * thr_id; // 0 if single thr
+			nonceptr[0] = (uint32_t)((0x100000000ull / opt_n_threads) * thr_id); // 0 if single thr
 		}
 		else
 		{
@@ -1564,7 +1577,7 @@ static void *miner_thread(void *userdata)
 		if(have_stratum)
 			max64time = LP_SCANTIME;
 		else
-			max64time = (uint32_t)max(1, scan_time + g_work_time - time(NULL));
+			max64time = (uint32_t)max((time_t)1, (time_t)scan_time + g_work_time - time(NULL));
 
 		max64 = max64time * (uint32_t)thr_hashrates[thr_id];
 
@@ -1615,6 +1628,7 @@ static void *miner_thread(void *userdata)
 				minmax = 1000000 * max64time;
 				break;
 			case ALGO_LYRA2v2:
+			case ALGO_LYRA2v3:
 				minmax = 1900000 * max64time;
 				break;
 			case ALGO_NEO:
@@ -1626,7 +1640,7 @@ static void *miner_thread(void *userdata)
 		max64 = max(minmax, max64);
 
 		// we can't scan more than uint capacity
-		max64 = min(UINT32_MAX, max64);
+		max64 = min((uint64_t)0xffffffff, max64);
 		start_nonce = nonceptr[0];
 
 		/* never let small ranges at end */
@@ -1634,7 +1648,7 @@ static void *miner_thread(void *userdata)
 			end_nonce = UINT32_MAX;
 
 		if((max64 + start_nonce) >= end_nonce)
-			max_nonce = end_nonce;
+			max_nonce = (uint32_t)end_nonce;
 		else
 			max_nonce = (uint32_t)(max64 + start_nonce);
 
@@ -1660,6 +1674,10 @@ static void *miner_thread(void *userdata)
 		{
 			mining_has_stopped[thr_id] = true;
 			pthread_exit(nullptr);
+		}
+		if(cgpu && loopcnt > 1)
+		{
+			cgpu->monitor.sampling_flag = true;
 		}
 
 		/* scan nonces for a proof-of-work hash */
@@ -1749,6 +1767,11 @@ static void *miner_thread(void *userdata)
 				max_nonce, &hashes_done);
 			break;
 
+		case ALGO_LYRA2v3:
+			rc = scanhash_lyra2v3(thr_id, work.data, work.target,
+								  max_nonce, &hashes_done);
+			break;
+
 		case ALGO_NIST5:
 			rc = scanhash_nist5(thr_id, work.data, work.target,
 								max_nonce, &hashes_done);
@@ -1835,6 +1858,11 @@ static void *miner_thread(void *userdata)
 				applog(LOG_NOTICE, CL_CYN "found => %08x" CL_GRN " %08x", nonceptr[12], swab32(nonceptr[12])); // data[21]
 		}
 		timeval_subtract(&diff, &tv_end, &tv_start);
+
+		if(cgpu && diff.tv_sec)
+		{ // stop monitoring
+			cgpu->monitor.sampling_flag = false;
+		}
 
 		if(diff.tv_sec > 0 || (diff.tv_sec == 0 && diff.tv_usec>2000)) // avoid totally wrong hash rates
 		{
@@ -1986,7 +2014,7 @@ start:
 		if(lp_url == NULL)
 		{
 			applog(LOG_ERR, "Out of memory!");
-			proper_exit(2);
+			proper_exit(EXIT_FAILURE);
 		}
 
 		sprintf(lp_url, "%s%s%s", rpc_url, need_slash ? "/" : "", copy_start);
@@ -2142,9 +2170,9 @@ static void *stratum_thread(void *userdata)
 			g_work_time = time(NULL);
 			if(stratum.job.clean)
 			{
-				if(!opt_quiet)
-					applog(LOG_BLUE, "%s %s block %d", short_url, algo_names[opt_algo],
-					stratum.job.height);
+//				if(!opt_quiet)
+//					applog(LOG_BLUE, "%s %s block %d", short_url, algo_names[opt_algo],
+//					stratum.job.height);
 				restart_threads();
 				if(check_dups)
 					hashlog_purge_old();
@@ -2194,13 +2222,13 @@ static void show_version_and_exit(void)
 		   PTW32_VERSION_STRING,
 #endif
 		   curl_version());
-	proper_exit(0);
+	proper_exit(EXIT_SUCCESS);
 }
 
 static void show_usage_and_exit(int status)
 {
 	if(status)
-		fprintf(stderr, "Try `" PROGRAM_NAME " --help' for more information.\n");
+		fprintf(stdout, "Try `" PROGRAM_NAME " --help' for more information.\n");
 	else
 		printf(usage);
 	proper_exit(status);
@@ -2288,11 +2316,11 @@ static void parse_arg(int key, char *arg)
 			{
 				d = atof(pch);
 				v = (uint32_t)d;
-				if(v > 7)
+				if(v > 8)
 				{ /* 0 = default */
 					if((d - v) > 0.0)
 					{
-						uint32_t adds = (uint32_t)floor((d - v) * (1 << (v - 8))) * 256;
+						uint32_t adds = (uint32_t)floor((d - v) * (1 << v));
 						gpus_intensity[n] = (1 << v) + adds;
 						applog(LOG_INFO, "Adding %u threads to intensity %u, %u cuda threads",
 							   adds, v, gpus_intensity[n]);
@@ -2304,6 +2332,8 @@ static void parse_arg(int key, char *arg)
 							   v, gpus_intensity[n]);
 					}
 				}
+				else
+					applog(LOG_WARNING, "invalid intensity, using default intensity");
 				last = gpus_intensity[n];
 				n++;
 				pch = strpbrk(pch, ",");
@@ -2433,7 +2463,7 @@ static void parse_arg(int key, char *arg)
 				if(rpc_user == NULL)
 				{
 					applog(LOG_ERR, "Out of memory!\n");
-					proper_exit(1);
+					proper_exit(EXIT_FAILURE);
 				}
 				strncpy(rpc_user, ap, sp - ap);
 				free(rpc_pass);
@@ -2463,7 +2493,7 @@ static void parse_arg(int key, char *arg)
 		if(rpc_user == NULL)
 		{
 			applog(LOG_ERR, "Out of memory!\n");
-			proper_exit(1);
+			proper_exit(EXIT_FAILURE);
 		}
 		strncpy(rpc_user, arg, p - arg);
 		free(rpc_pass);
@@ -2500,7 +2530,7 @@ static void parse_arg(int key, char *arg)
 		break;
 	case 1006:
 		print_hash_tests();
-		proper_exit(0);
+		proper_exit(EXIT_SUCCESS);
 		break;
 	case 1003:
 		want_longpoll = false;
@@ -2560,7 +2590,6 @@ static void parse_arg(int key, char *arg)
 		break;
 	case 'd': // CB
 	{
-		int i;
 		bool gpu[32] = {false};
 		int ngpus = cuda_num_devices();
 		char * pch = strtok(arg, ",");
@@ -2605,16 +2634,16 @@ static void parse_arg(int key, char *arg)
 	break;
 	case 'f': // CH - Divisor for Difficulty
 		d = atof(arg);
-		if(d == 0)	/* sanity check */
+		if(d <= 0.0)	/* sanity check */
 		{
-			printf("Error: diff factor can't be 0\n");
+			printf("Error: diff factor can't be 0 or negative\n");
 			exit(EXIT_FAILURE);
 		}
 		opt_difficulty = d;
 		break;
 	case 'm': // --diff-multiplier
 		d = atof(arg);
-		if(d <= 0.)
+		if(d <= 0.0)
 		{
 			printf("Error: diff multiplier can't be zero or negative\n");
 			exit(EXIT_FAILURE);
@@ -2681,6 +2710,27 @@ static void parse_arg(int key, char *arg)
 		}
 	}
 	break;
+	case 1074: /* --logfile */
+	{
+		if (strlen(arg) > 0)
+		{
+			logfilename = strdup(arg);
+			logfilepointer = fopen(logfilename, "w");
+			if (logfilepointer == NULL)
+				printf("\nWarning: can't create file %s\nLogging to file is disabled\n", logfilename);
+			else
+			{
+				printf("\nLogfile = %s\n", logfilename);
+				opt_logfile = true;
+			}
+		}
+		else
+			printf("\nNo logfile name.\nLogging to file is disabled\n ");
+	}
+	break;
+	case 1075:
+		opt_hwmonitor = true;
+		break;
 	default:
 		printf(usage);
 		exit(EXIT_FAILURE);
@@ -2762,7 +2812,7 @@ static void parse_cmdline(int argc, char *argv[])
 	}
 	if(optind < argc)
 	{
-		fprintf(stderr, "%s: unsupported non-option argument '%s'\n",
+		fprintf(stdout, "%s: unsupported non-option argument '%s'\n",
 				argv[0], argv[optind]);
 		show_usage_and_exit(1);
 	}
@@ -2777,16 +2827,14 @@ static void signal_handler(int sig)
 	switch(sig)
 	{
 	case SIGHUP:
-		applog(LOG_INFO, "SIGHUP received");
 		break;
 	case SIGINT:
+	case SIGTSTP:
 		signal(sig, SIG_IGN);
-		applog(LOG_INFO, "SIGINT received, exiting");
-		proper_exit(2);
+		proper_exit(EXIT_FAILURE);
 		break;
 	case SIGTERM:
-		applog(LOG_INFO, "SIGTERM received, exiting");
-		proper_exit(2);
+		proper_exit(EXIT_FAILURE);
 		break;
 	}
 }
@@ -2797,11 +2845,11 @@ BOOL WINAPI ConsoleHandler(DWORD dwType)
 	{
 	case CTRL_C_EVENT:
 		applog(LOG_INFO, "CTRL_C_EVENT received, exiting");
-		proper_exit(2);
+		proper_exit(EXIT_FAILURE);
 		break;
 	case CTRL_BREAK_EVENT:
 		applog(LOG_INFO, "CTRL_BREAK_EVENT received, exiting");
-		proper_exit(2);
+		proper_exit(EXIT_FAILURE);
 		break;
 	default:
 		return false;
@@ -2855,6 +2903,10 @@ int main(int argc, char *argv[])
 #else
 	printf("ccminer " PACKAGE_VERSION " (32bit) for nVidia GPUs\n");
 #endif
+	printf("\nBased on pooler cpuminer 2.3.2 and the tpruvot@github fork\n");
+	printf("CUDA support by Christian Buchner, Christian H. and DJM34\n");
+	printf("Includes optimizations and additions implemented by sp-hash, tpruvot, tsiv and others.\n\n");
+
 #ifdef _MSC_VER
 	printf("Compiled with Visual Studio %d ", msver());
 #else
@@ -2868,10 +2920,7 @@ int main(int argc, char *argv[])
 #endif
 #endif
 #endif
-	printf("using Nvidia CUDA Toolkit %d.%d\n\n", CUDART_VERSION / 1000, (CUDART_VERSION % 1000) / 10);
-	printf("Based on pooler cpuminer 2.3.2 and the tpruvot@github fork\n");
-	printf("CUDA support by Christian Buchner, Christian H. and DJM34\n");
-	printf("Includes optimizations implemented by sp-hash, klaust, tpruvot and tsiv.\n\n");
+	printf("using the Nvidia CUDA Toolkit %d.%d\n\n", CUDART_VERSION / 1000, (CUDART_VERSION % 1000) / 10);
 
 #ifdef WIN32
 	if(CUDART_VERSION == 8000 && _MSC_VER > 1900)
@@ -2900,7 +2949,7 @@ int main(int argc, char *argv[])
 	rpc_user = strdup("");
 	rpc_pass = strdup("");
 
-	for(int i = 0; i < MAX_GPUS; i++)
+	for(i = 0; i < MAX_GPUS; i++)
 		device_pstate[i] = -1;
 
 	// number of cpus for thread affinity
@@ -2926,7 +2975,7 @@ int main(int argc, char *argv[])
 		device_map[i] = i;
 	}
 
-	for(int i = 0; i < active_gpus; i++)
+	for(i = 0; i < active_gpus; i++)
 	{
 		int dev_id = device_map[i];
 		cudaError_t err;
@@ -2969,7 +3018,7 @@ int main(int argc, char *argv[])
 	}
 	if(!opt_benchmark && !rpc_url)
 	{
-		fprintf(stderr, "%s: no URL supplied\n", argv[0]);
+		fprintf(stdout, "%s: no URL supplied\n", argv[0]);
 		show_usage_and_exit(1);
 	}
 
@@ -2979,7 +3028,7 @@ int main(int argc, char *argv[])
 		if(rpc_userpass == NULL)
 		{
 			applog(LOG_ERR, "Out of memory!");
-			proper_exit(2);
+			proper_exit(EXIT_FAILURE);
 		}
 		sprintf(rpc_userpass, "%s:%s", rpc_user, rpc_pass);
 	}
@@ -3010,6 +3059,8 @@ int main(int argc, char *argv[])
 			applog(LOG_ERR, "chdir() failed (errno = %d)", errno);
 		signal(SIGHUP, signal_handler);
 		signal(SIGTERM, signal_handler);
+		signal(SIGINT, signal_handler);
+		signal(SIGTSTP, signal_handler);
 #else
 		HWND hcon = GetConsoleWindow();
 		if(hcon)
@@ -3097,12 +3148,15 @@ int main(int argc, char *argv[])
 	if(work_restart == NULL)
 	{
 		applog(LOG_ERR, "Out of memory!");
-		proper_exit(2);
+		proper_exit(EXIT_FAILURE);
 	}
 
 	thr_info = (struct thr_info *)calloc(opt_n_threads + 4, sizeof(*thr));
-	if(!thr_info)
-		return 1;
+	if(thr_info == NULL)
+	{
+		applog(LOG_ERR, "Out of memory!");
+		proper_exit(EXIT_FAILURE);
+	}
 
 	/* init workio thread info */
 	work_thr_id = opt_n_threads;
@@ -3112,7 +3166,7 @@ int main(int argc, char *argv[])
 	if(!thr->q)
 		return 1;
 
-	for(int i = 0; i < MAX_GPUS; i++)
+	for(i = 0; i < MAX_GPUS; i++)
 		mining_has_stopped[i] = true;
 
 #ifdef WIN32
@@ -3241,6 +3295,26 @@ int main(int argc, char *argv[])
 			return 1;
 		}
 	}
+	for(i = 0; i < opt_n_threads; i++)
+	{
+		thr = &thr_info[i];
+		thr->gpu.monitor.sampling_flag = false;
+		pthread_mutex_init(&thr->gpu.monitor.lock, NULL);
+		pthread_cond_init(&thr->gpu.monitor.sampling_signal, NULL);
+	}
+
+#ifdef USE_WRAPNVML
+	// to monitor gpu activitity during work, a thread is required
+	monitor_thr_id = opt_n_threads + 4;
+	thr = &thr_info[monitor_thr_id];
+	thr->id = monitor_thr_id;
+	thr->q = tq_new();
+	if(thr->q)
+		if(unlikely(pthread_create(&thr->pth, NULL, monitor_thread, thr)))
+		{
+			applog(LOG_ERR, "Monitoring thread %d create failed", i);
+		}
+#endif
 
 	/* start mining threads */
 	for(i = 0; i < opt_n_threads; i++)
@@ -3258,7 +3332,7 @@ int main(int argc, char *argv[])
 		if(unlikely(pthread_create(&thr->pth, NULL, miner_thread, thr)))
 		{
 			applog(LOG_ERR, "thread %d create failed", i);
-			return 1;
+			proper_exit(EXIT_FAILURE);
 		}
 	}
 
@@ -3270,9 +3344,21 @@ int main(int argc, char *argv[])
 	/* main loop - simply wait for workio thread to exit */
 	pthread_join(thr_info[work_thr_id].pth, NULL);
 
+	/* wait for mining threads */
+	for(i = 0; i < opt_n_threads; i++)
+	{
+		pthread_join(thr_info[i].pth, NULL);
+	}
+
+	if(monitor_thr_id != -1)
+	{
+		pthread_join(thr_info[monitor_thr_id].pth, NULL);
+		//tq_free(thr_info[monitor_thr_id].q);
+	}
+
 	applog(LOG_INFO, "workio thread dead, exiting.");
 
-	proper_exit(0);
+	proper_exit(EXIT_SUCCESS);
 
 	return 0;
 }

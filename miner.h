@@ -7,11 +7,22 @@
 #include "ccminer-config-win.h"
 #endif
 
-#ifndef __cplusplus
+#ifdef __cplusplus
+#include <algorithm>
+#include <cstring>
+#include <cinttypes>
+#include <cstdlib>
+#include <cstddef>
+using namespace std;
+#else
+#include <string.h>
 #include <stdbool.h>
-#endif
 #include <inttypes.h>
+#include <stdlib.h>
+#include <stddef.h>
+#endif
 #include <sys/time.h>
+
 #include <pthread.h>
 #include <jansson.h>
 #include <curl/curl.h>
@@ -29,15 +40,6 @@
 typedef SSIZE_T ssize_t;
 #undef HAVE_ALLOCA_H
 #undef HAVE_SYSLOG_H
-#endif
-
-#ifdef STDC_HEADERS
-# include <stdlib.h>
-# include <stddef.h>
-#else
-# ifdef HAVE_STDLIB_H
-#  include <stdlib.h>
-# endif
 #endif
 
 #ifdef HAVE_ALLOCA_H
@@ -77,6 +79,7 @@ void *alloca (size_t);
 #ifdef HAVE_SYSLOG_H
 #include <syslog.h>
 #define LOG_BLUE 0x10
+#define LOG_HW 0x20
 #define LOG_RAW  0x99
 #else
 enum
@@ -88,6 +91,7 @@ enum
 	LOG_DEBUG,
 	/* custom notices */
 	LOG_BLUE = 0x10,
+	LOG_HW = 0x20,
 	LOG_RAW = 0x99
 };
 #endif
@@ -108,11 +112,13 @@ typedef unsigned char uchar;
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
 #endif
 
+#ifndef __cplusplus
 #ifndef max
 # define max(a, b)  ((a) > (b) ? (a) : (b))
 #endif
 #ifndef min
 # define min(a, b)  ((a) < (b) ? (a) : (b))
+#endif
 #endif
 
 #ifndef UINT32_MAX
@@ -327,6 +333,10 @@ extern int scanhash_lyra2v2(int thr_id, uint32_t *pdata,
 	const uint32_t *ptarget, uint32_t max_nonce,
 	uint32_t *hashes_done);
 
+extern int scanhash_lyra2v3(int thr_id, uint32_t *pdata,
+							const uint32_t *ptarget, uint32_t max_nonce,
+							uint32_t *hashes_done);
+
 extern int scanhash_nist5(int thr_id, uint32_t *pdata,
 	uint32_t *ptarget, uint32_t max_nonce,
 	uint32_t *hashes_done);
@@ -403,7 +413,7 @@ struct monitor_info
 	pthread_mutex_t lock;
 	pthread_cond_t sampling_signal;
 	volatile bool sampling_flag;
-	uint32_t tm_displayed;
+	time_t tm_displayed;
 };
 
 struct cgpu_info
@@ -651,6 +661,7 @@ enum sha_algos
 	ALGO_JACKPOT,
 	ALGO_LUFFA_DOOM,
 	ALGO_LYRA2v2,
+	ALGO_LYRA2v3,
 	ALGO_MYR_GR,
 	ALGO_NIST5,
 	ALGO_PENTABLAKE,

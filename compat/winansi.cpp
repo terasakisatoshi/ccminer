@@ -75,11 +75,11 @@ static int write_console(const char *str, int len)
 {
 	/* convert utf-8 to utf-16, write directly to console */
 	int wlen = MultiByteToWideChar(CP_UTF8, 0, str, len, NULL, 0);
-	wchar_t *wbuf = (wchar_t *)alloca(wlen * sizeof(wchar_t));
+	wchar_t *wbuf = (wchar_t *)malloc(wlen * sizeof(wchar_t));
 	MultiByteToWideChar(CP_UTF8, 0, str, len, wbuf, wlen);
 
 	WriteConsoleW(console, wbuf, wlen, NULL, NULL);
-
+	free(wbuf);
 	/* return original (utf-8 encoded) length */
 	return len;
 }
@@ -361,7 +361,7 @@ int winansi_vfprintf(FILE *stream, const char *format, va_list list)
 		if(buf == NULL)
 		{
 			applog(LOG_ERR, "Out of memory!");
-			proper_exit(2);
+			proper_exit(EXIT_FAILURE);
 		}
 
 		len = vsnprintf(buf, len + 1, format, list);

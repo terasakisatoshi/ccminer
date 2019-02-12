@@ -61,7 +61,7 @@ extern int scanhash_doom(int thr_id, uint32_t *pdata,
 			applog(LOG_ERR, "intensity too high");
 			mining_has_stopped[thr_id] = true;
 			cudaStreamDestroy(gpustream[thr_id]);
-			proper_exit(2);
+			proper_exit(EXIT_FAILURE);
 		}
 #endif
 
@@ -90,7 +90,7 @@ extern int scanhash_doom(int thr_id, uint32_t *pdata,
 			doomhash(vhash64, endiandata);
 
 			} if (vhash64[7] <= Htarg && fulltest(vhash64, ptarget)) {
-				*hashes_done = min(max_nonce - first_nonce, (uint64_t) pdata[19] - first_nonce + throughput);
+				*hashes_done = min((uint64_t)(max_nonce - first_nonce), (uint64_t) pdata[19] - first_nonce + throughput);
 				pdata[19] = foundNonce;
 				return 1;
 			}

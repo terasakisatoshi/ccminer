@@ -5,6 +5,6 @@
 
 #--ptxas-options=\"-v -dlcm=cg\""
 
-extracflags="-march=native -std=c++11 -pthread -fno-strict-aliasing"
+extracflags="-march=x86-64 -std=c++11 -pthread -fno-strict-aliasing"
 
 CUDA_CFLAGS="-g  -std=c++11 -Xcompiler -fno-strict-aliasing,-Wall -D_FORCE_INLINES" ./configure CFLAGS="-std=c99 -march=native -fno-strict-aliasing" CXXFLAGS="-Og -g  $extracflags" --with-cuda=/usr/local/cuda --with-nvml=libnvidia-ml.so

@@ -15,6 +15,7 @@
 #include <cstdarg>
 #include <cstring>
 #include <cinttypes>
+using namespace std;
 #include <unistd.h>
 #include <jansson.h>
 #include <curl/curl.h>
@@ -31,12 +32,15 @@
 #endif
 #include "miner.h"
 #include "elist.h"
-using namespace std;
 
 extern enum sha_algos opt_algo;
 extern char curl_err_str[];
 extern bool stop_mining;
 extern bool send_stale;
+extern const char *algo_names[];
+
+extern bool opt_logfile;
+extern FILE *logfilepointer;
 
 bool opt_tracegpu = false;
 
@@ -109,15 +113,17 @@ void applog(int prio, const char *fmt, ...)
 			switch(prio)
 			{
 			case LOG_BLUE: prio = LOG_NOTICE; break;
+			case LOG_HW:   prio = LOG_INFO; break;
 			}
 		}
 
 		va_copy(ap2, ap);
 		len = vsnprintf(NULL, 0, fmt, ap2) + 1;
 		va_end(ap2);
-		buf = (char*)alloca(len);
+		buf = (char*)malloc(len);
 		if(vsnprintf(buf, len, fmt, ap) >= 0)
 			syslog(prio, "%s", buf);
+		free(buf);
 	}
 #else
 	if(0)
@@ -127,8 +133,7 @@ void applog(int prio, const char *fmt, ...)
 	else
 	{
 		const char* color = "";
-		char *f;
-		int len;
+		char f[16000];
 		struct tm tm, *tm_p;
 		time_t now = time(NULL);
 
@@ -145,6 +150,11 @@ void applog(int prio, const char *fmt, ...)
 		case LOG_INFO:    color = ""; break;
 		case LOG_DEBUG:   color = CL_GRY; break;
 
+		case LOG_HW:
+			color = CL_MAG;
+			prio = LOG_INFO;
+			break;
+
 		case LOG_BLUE:
 			prio = LOG_NOTICE;
 			color = CL_CYN;
@@ -153,9 +163,9 @@ void applog(int prio, const char *fmt, ...)
 		if(!use_colors)
 			color = "";
 
-		len = 160 + (int)strlen(fmt) + 2;
-		f = (char*)alloca(len);
-		sprintf(f, "[%d-%02d-%02d %02d:%02d:%02d]%s %s%s\n",
+		pthread_mutex_lock(&applog_lock);
+
+		snprintf(f, sizeof(f), "[%d-%02d-%02d %02d:%02d:%02d]%s %s%s\n",
 				tm.tm_year + 1900,
 				tm.tm_mon + 1,
 				tm.tm_mday,
@@ -166,9 +176,22 @@ void applog(int prio, const char *fmt, ...)
 				fmt,
 				use_colors ? CL_N : ""
 				);
-		pthread_mutex_lock(&applog_lock);
-		vfprintf(stderr, f, ap);	/* atomic write to stderr */
-		fflush(stderr);
+		vfprintf(stdout, f, ap);	/* atomic write to stderr */
+		fflush(stdout);
+		if (opt_logfile)
+		{
+			snprintf(f, sizeof(f), "[%d-%02d-%02d %02d:%02d:%02d] %s\n",
+					tm.tm_year + 1900,
+					tm.tm_mon + 1,
+					tm.tm_mday,
+					tm.tm_hour,
+					tm.tm_min,
+					tm.tm_sec,
+					fmt
+			);
+			vfprintf(logfilepointer, f, ap);	/* atomic write to logfile */
+			fflush(logfilepointer);
+		}
 		pthread_mutex_unlock(&applog_lock);
 	}
 	va_end(ap);
@@ -202,7 +225,7 @@ void gpulog(int prio, int thr_id, const char *fmt, ...)
 	}
 	else
 	{
-		fprintf(stderr, "%s OOM!\n", __func__);
+		fprintf(stdout, "%s OOM!\n", __func__);
 	}
 
 	va_end(ap);
@@ -270,7 +293,7 @@ static size_t all_data_cb(const void *ptr, size_t size, size_t nmemb,
 	if(newmem == NULL)
 	{
 		applog(LOG_ERR, "Out of memory!");
-		proper_exit(2);
+		proper_exit(EXIT_FAILURE);
 	}
 
 	db->buf = newmem;
@@ -334,13 +357,13 @@ static size_t resp_hdr_cb(void *ptr, size_t size, size_t nmemb, void *user_data)
 	if(val == NULL)
 	{
 		applog(LOG_ERR, "Out of memory!");
-		proper_exit(2);
+		proper_exit(EXIT_FAILURE);
 	}
 	key = (char*)calloc(1, ptrlen);
 	if(key == NULL)
 	{
 		applog(LOG_ERR, "Out of memory!");
-		proper_exit(2);
+		proper_exit(EXIT_FAILURE);
 	}
 
 	tmp = memchr(ptr, ':', ptrlen);
@@ -658,7 +681,7 @@ err_out:
 
 /**
 * Unlike malloc, calloc set the memory to zero
-*/
+
 void *aligned_calloc(int size)
 {
 	const int ALIGN = 64; // cache line
@@ -667,7 +690,7 @@ void *aligned_calloc(int size)
 	if(res == NULL)
 	{
 		applog(LOG_ERR, "Out of memory!");
-		proper_exit(2);
+		proper_exit(EXIT_FAILURE);
 	}
 	memset(res, 0, size);
 	return res;
@@ -676,7 +699,7 @@ void *aligned_calloc(int size)
 	if(mem == NULL)
 	{
 		applog(LOG_ERR, "Out of memory!");
-		proper_exit(2);
+		proper_exit(EXIT_FAILURE);
 	}
 	void **ptr = (void**)((size_t)(((uintptr_t)(mem)) + ALIGN + sizeof(uintptr_t)) & ~(ALIGN - 1));
 	ptr[-1] = mem;
@@ -692,6 +715,7 @@ void aligned_free(void *ptr)
 	free(((void**)ptr)[-1]);
 #endif
 }
+*/
 
 void cbin2hex(char *out, const char *in, size_t len)
 {
@@ -709,7 +733,7 @@ char *bin2hex(const uchar *in, size_t len)
 	if(s == NULL)
 	{
 		applog(LOG_ERR, "Out of memory!");
-		proper_exit(2);
+		proper_exit(EXIT_FAILURE);
 	}
 
 	cbin2hex(s, (const char *)in, len);
@@ -952,7 +976,7 @@ static void stratum_buffer_append(struct stratum_ctx *sctx, const char *s)
 		if(sctx->sockbuf == NULL)
 		{
 			applog(LOG_ERR, "Out of memory!");
-			proper_exit(2);
+			proper_exit(EXIT_FAILURE);
 		}
 	}
 	strcpy(sctx->sockbuf + old, s);
@@ -1061,7 +1085,7 @@ bool stratum_connect(struct stratum_ctx *sctx, const char *url)
 		if(sctx->sockbuf == NULL)
 		{
 			applog(LOG_ERR, "Out of memory!");
-			proper_exit(2);
+			proper_exit(EXIT_FAILURE);
 		}
 		sctx->sockbuf_size = RBUFSIZE;
 	}
@@ -1079,7 +1103,7 @@ bool stratum_connect(struct stratum_ctx *sctx, const char *url)
 	{
 		applog(LOG_ERR, "Out of memory!");
 		pthread_mutex_unlock(&sctx->sock_lock);
-		proper_exit(2);
+		proper_exit(EXIT_FAILURE);
 	}
 	sprintf(sctx->curl_url, "http%s", strstr(url, "://"));
 
@@ -1241,7 +1265,7 @@ static bool stratum_parse_extranonce(struct stratum_ctx *sctx, const json_t *par
 	if(sctx->xnonce1 == NULL)
 	{
 		applog(LOG_ERR, "Out of memory!");
-		proper_exit(2);
+		proper_exit(EXIT_FAILURE);
 	}
 	hex2bin(sctx->xnonce1, xnonce1, sctx->xnonce1_size);
 	sctx->xnonce2_size = xn2_size;
@@ -1259,11 +1283,11 @@ out:
 bool stratum_subscribe(struct stratum_ctx *sctx)
 {
 	json_error_t err;
-	json_t *val;
+	json_t *val = NULL;
 	json_t *res_val;
 	json_t *err_val;
 	bool ret = false, retry = false;
-	char *sret;
+	char *sret = NULL;
 	char *sid;
 
 start:
@@ -1271,7 +1295,7 @@ start:
 	if(s == NULL)
 	{
 		applog(LOG_ERR, "Out of memory!");
-		proper_exit(2);
+		proper_exit(EXIT_FAILURE);
 	}
 	if(retry)
 		sprintf(s, "{\"id\": 1, \"method\": \"mining.subscribe\", \"params\": []}");
@@ -1368,7 +1392,7 @@ bool stratum_authorize(struct stratum_ctx *sctx, const char *user, const char *p
 	if(s == NULL)
 	{
 		applog(LOG_ERR, "Out of memory!");
-		proper_exit(2);
+		proper_exit(EXIT_FAILURE);
 	}
 	sprintf(s, "{\"id\": 2, \"method\": \"mining.authorize\", \"params\": [\"%s\", \"%s\"]}",
 			user, pass);
@@ -1471,7 +1495,7 @@ out:
 * Extract block height     L H... here len=3, height=0x1333e8
 * "...0000000000ffffffff2703e83313062f503253482f043d61105408"
 */
-static uint32_t getblocheight(struct stratum_ctx *sctx)
+static uint32_t getblockheight(struct stratum_ctx *sctx)
 {
 	uint32_t height = 0;
 	uint8_t hlen = 0, *p, *m;
@@ -1572,7 +1596,7 @@ static bool stratum_notify(struct stratum_ctx *sctx, json_t *params)
 		if(merkle == NULL)
 		{
 			applog(LOG_ERR, "Out of memory!");
-			proper_exit(2);
+			proper_exit(EXIT_FAILURE);
 		}
 	}
 	for(i = 0; i < merkle_count; i++)
@@ -1591,7 +1615,7 @@ static bool stratum_notify(struct stratum_ctx *sctx, json_t *params)
 		if(merkle[i] == NULL)
 		{
 			applog(LOG_ERR, "Out of memory!");
-			proper_exit(2);
+			proper_exit(EXIT_FAILURE);
 		}
 		hex2bin(merkle[i], s, 32);
 	}
@@ -1605,7 +1629,7 @@ static bool stratum_notify(struct stratum_ctx *sctx, json_t *params)
 	if(sctx->job.coinbase == NULL)
 	{
 		applog(LOG_ERR, "Out of memory!");
-		proper_exit(2);
+		proper_exit(EXIT_FAILURE);
 	}
 	sctx->job.xnonce2 = sctx->job.coinbase + coinb1_size + sctx->xnonce1_size;
 	hex2bin(sctx->job.coinbase, coinb1, coinb1_size);
@@ -1620,10 +1644,14 @@ static bool stratum_notify(struct stratum_ctx *sctx, json_t *params)
 	hex2bin(sctx->job.prevhash, prevhash, 32);
 
 	if(opt_algo != ALGO_SIA)
-		sctx->job.height = getblocheight(sctx);
+		sctx->job.height = getblockheight(sctx);
 	else
 		sctx->job.height = 1;
-
+	if(!opt_quiet)
+	{
+		applog(LOG_BLUE, "Received new %s block header", algo_names[opt_algo]);
+		applog(LOG_BLUE, "block height %d, %d transactions", sctx->job.height, merkle_count);
+	}
 	for(i = 0; i < sctx->job.merkle_count; i++)
 		free(sctx->job.merkle[i]);
 	free(sctx->job.merkle);
@@ -1695,7 +1723,7 @@ static bool stratum_reconnect(struct stratum_ctx *sctx, json_t *params)
 	if(sctx->url == NULL)
 	{
 		applog(LOG_ERR, "Out of memory!");
-		proper_exit(2);
+		proper_exit(EXIT_FAILURE);
 	}
 	sprintf(sctx->url, "stratum+tcp://%s:%d", host, port);
 
@@ -1760,11 +1788,11 @@ static bool json_object_set_error(json_t *result, int code, const char *msg)
 /* allow to report algo/device perf to the pool for algo stats */
 static bool stratum_benchdata(json_t *result, json_t *params, int thr_id)
 {
-	char algo[64] = {0};
+	char algo[64] = { 0 };
 	char vid[32], arch[8], driver[32];
 	char *card;
 	char os[8];
-	uint32_t watts = 0; 
+	uint32_t watts = 0, plimit = 0;
 	int dev_id = device_map[thr_id];
 	int cuda_ver = cuda_version();
 	struct cgpu_info *cgpu = &thr_info[thr_id].gpu;
@@ -1775,24 +1803,27 @@ static bool stratum_benchdata(json_t *result, json_t *params, int thr_id)
 #ifdef _WIN64
 	strcpy(os, "win64");
 #else
-	#ifdef WIN32
-		strcpy(os, "win32");
-	#else
-		#ifdef __APPLE__
-			strcpy(os, "OSX");
-		#else
-			strcpy(os, "linux");
-		#endif
-	#endif
+#ifdef WIN32
+	strcpy(os, "win32");
+#else
+#ifdef __APPLE__
+	strcpy(os, "OSX");
+#else
+	strcpy(os, "linux");
+#endif
+#endif
 #endif
 
 #ifdef USE_WRAPNVML
 	cgpu->has_monitoring = true;
-	cgpu->gpu_power = gpu_power(cgpu); // mWatts
+	if(cgpu->monitor.gpu_power)
+		cgpu->gpu_power = cgpu->monitor.gpu_power;
+	else
+		cgpu->gpu_power = gpu_power(cgpu); // mWatts
 	watts = (cgpu->gpu_power >= 1000) ? cgpu->gpu_power / 1000 : 0; // ignore nvapi %
-	gpu_info(cgpu);
+	plimit = device_plimit[dev_id] > 0 ? device_plimit[dev_id] : 0;
+	gpu_info(cgpu); // vid/pid
 #endif
-	cuda_gpu_clocks(cgpu);
 	get_currentalgo(algo, sizeof(algo));
 
 	card = device_name[dev_id];
@@ -1816,7 +1847,10 @@ static bool stratum_benchdata(json_t *result, json_t *params, int thr_id)
 	json_object_set_new(val, "arch", json_string(arch));
 	json_object_set_new(val, "freq", json_integer(cgpu->gpu_clock / 1000));
 	json_object_set_new(val, "memf", json_integer(cgpu->gpu_memclock / 1000));
+	json_object_set_new(val, "curr_freq", json_integer(cgpu->monitor.gpu_clock));
+	json_object_set_new(val, "curr_memf", json_integer(cgpu->monitor.gpu_memclock));
 	json_object_set_new(val, "power", json_integer(watts));
+	json_object_set_new(val, "plimit", json_integer(plimit));
 	json_object_set_new(val, "khashes", json_real(cgpu->khashes));
 	json_object_set_new(val, "intensity", json_real(cgpu->intensity));
 	json_object_set_new(val, "throughput", json_integer(cgpu->throughput));
@@ -2016,7 +2050,7 @@ struct thread_q *tq_new(void)
 	if(tq == NULL)
 	{
 		applog(LOG_ERR, "Out of memory!");
-		proper_exit(2);
+		proper_exit(EXIT_FAILURE);
 	}
 
 	INIT_LIST_HEAD(&tq->q);
@@ -2075,7 +2109,7 @@ bool tq_push(struct thread_q *tq, void *data)
 	if(ent == NULL)
 	{
 		applog(LOG_ERR, "Out of memory!");
-		proper_exit(2);
+		proper_exit(EXIT_FAILURE);
 	}
 
 	ent->data = data;
@@ -2152,7 +2186,7 @@ char* atime2str(time_t timer)
 	if(buf == NULL)
 	{
 		applog(LOG_ERR, "Out of memory!");
-		proper_exit(2);
+		proper_exit(EXIT_FAILURE);
 	}
 	memset(buf, 0, 16);
 	time2str(buf, timer);
@@ -2336,7 +2370,7 @@ char *abin2hex(const unsigned char *p, size_t len)
 	if(s == NULL)
 	{
 		applog(LOG_ERR, "Out of memory!");
-		proper_exit(2);
+		proper_exit(EXIT_FAILURE);
 	}
 	bin2hex(s, p, len);
 	return s;

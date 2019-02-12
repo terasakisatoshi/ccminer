@@ -446,7 +446,7 @@ static size_t base64_encode(const uchar *indata, size_t insize, char *outptr, si
 	if(outbuf == NULL)
 	{
 		applog(LOG_ERR, "Out of memory!");
-		proper_exit(1);
+		proper_exit(EXIT_FAILURE);
 	}
 
 	while (inlen > 0) {
@@ -561,7 +561,7 @@ static int websocket_handshake(SOCKETTYPE c, char *result, char *clientkey)
 	if(data == NULL)
 	{
 		applog(LOG_ERR, "Out of memory!");
-		proper_exit(1);
+		proper_exit(EXIT_FAILURE);
 	}
 	else {
 		uchar *p = data;
@@ -591,7 +591,7 @@ static void setup_ipaccess()
 	if(buf == NULL)
 	{
 		applog(LOG_ERR, "Out of memory!");
-		proper_exit(1);
+		proper_exit(EXIT_FAILURE);
 	}
 
 	strcpy(buf, opt_api_allow);
@@ -605,7 +605,7 @@ static void setup_ipaccess()
 	if(ipaccess == NULL)
 	{
 		applog(LOG_ERR, "Out of memory!");
-		proper_exit(1);
+		proper_exit(EXIT_FAILURE);
 	}
 
 	ips = 0;
@@ -739,7 +739,7 @@ static void api()
 	if(apisock == NULL)
 	{
 		applog(LOG_ERR, "Out of memory!");
-		proper_exit(1);
+		proper_exit(EXIT_FAILURE);
 	}
 	*apisock = INVSOCK;
 
@@ -748,6 +748,7 @@ static void api()
 	*apisock = socket(AF_INET, SOCK_STREAM, 0);
 	if (*apisock == INVSOCK) {
 		applog(LOG_ERR, "API initialisation failed (%s)%s", strerror(errno), UNAVAILABLE);
+		free(apisock);
 		return;
 	}
 
@@ -756,6 +757,7 @@ static void api()
 	serv.sin_addr.s_addr = inet_addr(addr);
 	if (serv.sin_addr.s_addr == (in_addr_t)INVINETADDR) {
 		applog(LOG_ERR, "API initialisation 2 failed (%s)%s", strerror(errno), UNAVAILABLE);
+		free(apisock);
 		return;
 	}
 
@@ -816,7 +818,7 @@ static void api()
 	if(buffer == NULL)
 	{
 		applog(LOG_ERR, "Out of memory!");
-		proper_exit(1);
+		proper_exit(EXIT_FAILURE);
 	}
 
 	counter = 0;
@@ -845,7 +847,7 @@ static void api()
 			char *wskey = NULL;
 			n = recv(c, &buf[0], SOCK_REC_BUFSZ, 0);
 
-			fail = SOCKETFAIL(n);
+			fail = SOCKETFAIL(n) || n == 0;
 			if (fail)
 				buf[0] = '\0';
 			else if (n > 0 && buf[n-1] == '\n') {
@@ -854,7 +856,7 @@ static void api()
 				if (n > 0 && buf[n-1] == '\r')
 					buf[n-1] = '\0';
 			}
-			buf[n] = '\0';
+			else buf[n] = '\0';
 
 			//if (opt_debug && opt_protocol && n > 0)
 			//	applog(LOG_DEBUG, "API: recv command: (%d) '%s'+char(%x)", n, buf, buf[n-1]);
