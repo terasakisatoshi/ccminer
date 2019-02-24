@@ -555,7 +555,7 @@ shabal_core(void *cc, const unsigned char *data, size_t len)
 	 * current block. Note that it is anyway suboptimal to call
 	 * this method many times for small chunks of data.
 	 */
-	if (len < (sizeof sc->buf) - ptr) {
+	if (len < sizeof(sc->buf) - ptr) {
 		memcpy(buf + ptr, data, len);
 		ptr += len;
 		sc->ptr = ptr;
@@ -566,7 +566,7 @@ shabal_core(void *cc, const unsigned char *data, size_t len)
 	while (len > 0) {
 		size_t clen;
 
-		clen = (sizeof sc->buf) - ptr;
+		clen = sizeof(sc->buf) - ptr;
 		if (clen > len)
 			clen = len;
 		memcpy(buf + ptr, data, clen);
@@ -608,7 +608,7 @@ shabal_close(void *cc, unsigned ub, unsigned n, void *dst, unsigned size_words)
 	ptr = sc->ptr;
 	z = 0x80 >> n;
 	buf[ptr] = ((ub & -z) | z) & 0xFF;
-	memset(buf + ptr + 1, 0, (sizeof sc->buf) - (ptr + 1));
+	memset(buf + ptr + 1, 0, sizeof(sc->buf) - (ptr + 1));
 	READ_STATE(sc);
 	DECODE_BLOCK;
 	INPUT_BLOCK_ADD;
@@ -657,7 +657,7 @@ shabal_close(void *cc, unsigned ub, unsigned n, void *dst, unsigned size_words)
 		return;
 	}
 	out_len = size_words << 2;
-	memcpy(dst, u.tmp_out + (sizeof u.tmp_out) - out_len, out_len);
+	memcpy(dst, u.tmp_out + sizeof(u.tmp_out) - out_len, out_len);
 	shabal_init(sc, size_words << 5);
 }
 #if 0

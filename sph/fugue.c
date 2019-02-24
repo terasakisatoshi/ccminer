@@ -948,7 +948,7 @@ fugue4_core(sph_fugue_context *sc, const void *data, size_t len)
 		for (u = plen + 1; u < 4; u ++) \
 			buf[u] = 0; \
 	} \
-	core(sc, buf + plen, (sizeof buf) - plen); \
+	core(sc, buf + plen, sizeof(buf) - plen); \
 	rms = sc->round_shift * (rcm); \
 	memcpy(S, sc->S + (s) - rms, rms * sizeof(sph_u32)); \
 	memcpy(S + rms, sc->S, ((s) - rms) * sizeof(sph_u32));

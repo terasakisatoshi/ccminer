@@ -646,7 +646,7 @@ bmw32(sph_bmw_small_context *sc, const void *data, size_t len)
 	while (len > 0) {
 		size_t clen;
 
-		clen = (sizeof sc->buf) - ptr;
+		clen = sizeof(sc->buf) - ptr;
 		if (clen > len)
 			clen = len;
 		memcpy(buf + ptr, data, clen);
@@ -682,20 +682,20 @@ bmw32_close(sph_bmw_small_context *sc, unsigned ub, unsigned n,
 	z = 0x80 >> n;
 	buf[ptr ++] = ((ub & -z) | z) & 0xFF;
 	h = sc->H;
-	if (ptr > (sizeof sc->buf) - 8) {
-		memset(buf + ptr, 0, (sizeof sc->buf) - ptr);
+	if (ptr > sizeof(sc->buf) - 8) {
+		memset(buf + ptr, 0, sizeof(sc->buf) - ptr);
 		compress_small(buf, h, h1);
 		ptr = 0;
 		h = h1;
 	}
-	memset(buf + ptr, 0, (sizeof sc->buf) - 8 - ptr);
+	memset(buf + ptr, 0, sizeof(sc->buf) - 8 - ptr);
 #if SPH_64
-	sph_enc64le_aligned(buf + (sizeof sc->buf) - 8,
+	sph_enc64le_aligned(buf + sizeof(sc->buf) - 8,
 		SPH_T64(sc->bit_count + n));
 #else
-	sph_enc32le_aligned(buf + (sizeof sc->buf) - 8,
+	sph_enc32le_aligned(buf + sizeof(sc->buf) - 8,
 		sc->bit_count_low + n);
-	sph_enc32le_aligned(buf + (sizeof sc->buf) - 4,
+	sph_enc32le_aligned(buf + sizeof(sc->buf) - 4,
 		SPH_T32(sc->bit_count_high));
 #endif
 	compress_small(buf, h, h2);
@@ -780,7 +780,7 @@ bmw64(sph_bmw_big_context *sc, const void *data, size_t len)
 	while (len > 0) {
 		size_t clen;
 
-		clen = (sizeof sc->buf) - ptr;
+		clen = sizeof(sc->buf) - ptr;
 		if (clen > len)
 			clen = len;
 		memcpy(buf + ptr, data, clen);
@@ -816,14 +816,14 @@ bmw64_close(sph_bmw_big_context *sc, unsigned ub, unsigned n,
 	z = 0x80 >> n;
 	buf[ptr ++] = ((ub & -z) | z) & 0xFF;
 	h = sc->H;
-	if (ptr > (sizeof sc->buf) - 8) {
-		memset(buf + ptr, 0, (sizeof sc->buf) - ptr);
+	if (ptr > sizeof(sc->buf) - 8) {
+		memset(buf + ptr, 0, sizeof(sc->buf) - ptr);
 		compress_big(buf, h, h1);
 		ptr = 0;
 		h = h1;
 	}
-	memset(buf + ptr, 0, (sizeof sc->buf) - 8 - ptr);
-	sph_enc64le_aligned(buf + (sizeof sc->buf) - 8,
+	memset(buf + ptr, 0, sizeof(sc->buf) - 8 - ptr);
+	sph_enc64le_aligned(buf + sizeof(sc->buf) - 8,
 		SPH_T64(sc->bit_count + n));
 	compress_big(buf, h, h2);
 	for (u = 0; u < 16; u ++)

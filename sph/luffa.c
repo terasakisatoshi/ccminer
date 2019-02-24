@@ -1064,7 +1064,7 @@ luffa3(sph_luffa224_context *sc, const void *data, size_t len)
 
 	buf = sc->buf;
 	ptr = sc->ptr;
-	if (len < (sizeof sc->buf) - ptr) {
+	if (len < sizeof(sc->buf) - ptr) {
 		memcpy(buf + ptr, data, len);
 		ptr += len;
 		sc->ptr = ptr;
@@ -1075,7 +1075,7 @@ luffa3(sph_luffa224_context *sc, const void *data, size_t len)
 	while (len > 0) {
 		size_t clen;
 
-		clen = (sizeof sc->buf) - ptr;
+		clen = sizeof(sc->buf) - ptr;
 		if (clen > len)
 			clen = len;
 		memcpy(buf + ptr, data, clen);
@@ -1106,7 +1106,7 @@ luffa3_close(sph_luffa224_context *sc, unsigned ub, unsigned n,
 	ptr = sc->ptr;
 	z = 0x80 >> n;
 	buf[ptr ++] = ((ub & -z) | z) & 0xFF;
-	memset(buf + ptr, 0, (sizeof sc->buf) - ptr);
+	memset(buf + ptr, 0, sizeof(sc->buf) - ptr);
 	READ_STATE3(sc);
 	for (i = 0; i < 2; i ++) {
 		MI3;
@@ -1134,7 +1134,7 @@ luffa4(sph_luffa384_context *sc, const void *data, size_t len)
 
 	buf = sc->buf;
 	ptr = sc->ptr;
-	if (len < (sizeof sc->buf) - ptr) {
+	if (len < sizeof(sc->buf) - ptr) {
 		memcpy(buf + ptr, data, len);
 		ptr += len;
 		sc->ptr = ptr;
@@ -1145,7 +1145,7 @@ luffa4(sph_luffa384_context *sc, const void *data, size_t len)
 	while (len > 0) {
 		size_t clen;
 
-		clen = (sizeof sc->buf) - ptr;
+		clen = sizeof(sc->buf) - ptr;
 		if (clen > len)
 			clen = len;
 		memcpy(buf + ptr, data, clen);
@@ -1176,7 +1176,7 @@ luffa4_close(sph_luffa384_context *sc, unsigned ub, unsigned n, void *dst)
 	out = dst;
 	z = 0x80 >> n;
 	buf[ptr ++] = ((ub & -z) | z) & 0xFF;
-	memset(buf + ptr, 0, (sizeof sc->buf) - ptr);
+	memset(buf + ptr, 0, sizeof(sc->buf) - ptr);
 	READ_STATE4(sc);
 	for (i = 0; i < 3; i ++) {
 		MI4;
@@ -1214,7 +1214,8 @@ luffa5(sph_luffa512_context *sc, const void *data, size_t len)
 
 	buf = sc->buf;
 	ptr = sc->ptr;
-	if (len < (sizeof sc->buf) - ptr) {
+	if(len < sizeof(sc->buf) - ptr)
+	{
 		memcpy(buf + ptr, data, len);
 		ptr += len;
 		sc->ptr = ptr;
@@ -1222,17 +1223,19 @@ luffa5(sph_luffa512_context *sc, const void *data, size_t len)
 	}
 
 	READ_STATE5(sc);
-	while (len > 0) {
+	while(len > 0)
+	{
 		size_t clen;
 
-		clen = (sizeof sc->buf) - ptr;
-		if (clen > len)
+		clen = sizeof(sc->buf) - ptr;
+		if(clen > len)
 			clen = len;
 		memcpy(buf + ptr, data, clen);
 		ptr += clen;
 		data = (const unsigned char *)data + clen;
 		len -= clen;
-		if (ptr == sizeof sc->buf) {
+		if(ptr == sizeof sc->buf)
+		{
 			MI5;
 			P5;
 			ptr = 0;
@@ -1256,7 +1259,7 @@ luffa5_close(sph_luffa512_context *sc, unsigned ub, unsigned n, void *dst)
 	out = dst;
 	z = 0x80 >> n;
 	buf[ptr ++] = ((ub & -z) | z) & 0xFF;
-	memset(buf + ptr, 0, (sizeof sc->buf) - ptr);
+	memset(buf + ptr, 0, sizeof(sc->buf) - ptr);
 	READ_STATE5(sc);
 	for (i = 0; i < 3; i ++) {
 		MI5;
