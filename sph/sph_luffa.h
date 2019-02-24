@@ -73,7 +73,8 @@ extern "C"{
  * computation can be cloned by copying the context (e.g. with a simple
  * <code>memcpy()</code>).
  */
-typedef struct {
+typedef struct sph_luffa224_context
+{
 #ifndef DOXYGEN_IGNORE
 	unsigned char buf[32];    /* first field, for alignment */
 	size_t ptr;
@@ -90,7 +91,8 @@ typedef sph_luffa224_context sph_luffa256_context;
 /**
  * This structure is a context for Luffa-384 computations.
  */
-typedef struct {
+typedef struct sph_luffa384_context
+{
 #ifndef DOXYGEN_IGNORE
 	unsigned char buf[32];    /* first field, for alignment */
 	size_t ptr;
@@ -101,7 +103,8 @@ typedef struct {
 /**
  * This structure is a context for Luffa-512 computations.
  */
-typedef struct {
+typedef struct sph_luffa512_context
+{
 #ifndef DOXYGEN_IGNORE
 	unsigned char buf[32];    /* first field, for alignment */
 	size_t ptr;

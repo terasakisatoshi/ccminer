@@ -191,7 +191,7 @@ uint32_t device_intensity(int thr_id, const char *func, uint32_t defcount)
 }
 
 // Zeitsynchronisations-Routine von cudaminer mit CPU sleep
-typedef struct { double value[8]; } tsumarray;
+typedef struct tsumarray { double value[8]; } tsumarray;
 
 cudaError_t MyStreamSynchronize(cudaStream_t stream, int situation, int thr_id)
 {
