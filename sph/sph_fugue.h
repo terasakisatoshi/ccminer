@@ -16,7 +16,8 @@ extern "C"{
 
 #define SPH_SIZE_fugue512   512
 
-typedef struct {
+typedef struct sph_fugue_context
+{
 #ifndef DOXYGEN_IGNORE
 	sph_u32 partial;
 	unsigned partial_len;

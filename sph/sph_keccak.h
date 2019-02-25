@@ -73,7 +73,8 @@ extern "C"{
  * can be cloned by copying the context (e.g. with a simple
  * <code>memcpy()</code>).
  */
-typedef struct {
+typedef struct sph_keccak_context
+{
 #ifndef DOXYGEN_IGNORE
 	unsigned char buf[144];    /* first field, for alignment */
 	size_t ptr, lim;

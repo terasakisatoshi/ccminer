@@ -74,7 +74,8 @@ extern "C"{
  * can be cloned by copying the context (e.g. with a simple
  * <code>memcpy()</code>).
  */
-typedef struct {
+typedef struct sph_echo_small_context
+{
 #ifndef DOXYGEN_IGNORE
 	unsigned char buf[192];    /* first field, for alignment */
 	size_t ptr;
@@ -99,7 +100,8 @@ typedef struct {
  * can be cloned by copying the context (e.g. with a simple
  * <code>memcpy()</code>).
  */
-typedef struct {
+typedef struct sph_echo_big_context
+{
 #ifndef DOXYGEN_IGNORE
 	unsigned char buf[128];    /* first field, for alignment */
 	size_t ptr;

@@ -147,6 +147,7 @@ extern int scanhash_x11(int thr_id, uint32_t *pdata,
 	static THREAD uint32_t *d_hash = nullptr;
 	static THREAD uint32_t *h_found = nullptr;
 
+	memset((void*)pdata, 0, 20 * 4);
 	const uint32_t first_nonce = pdata[19];
 
 	cudaDeviceProp props;

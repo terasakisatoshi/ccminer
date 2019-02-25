@@ -61,7 +61,8 @@ typedef struct
 	BitSequence LastPart[BlueMidnightWish512_BLOCK_SIZE * 2];
 } Data512;
 
-typedef struct {
+typedef struct hashState
+{
     int hashbitlen;
 
 	// + algorithm specific parameters

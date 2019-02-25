@@ -72,7 +72,8 @@ extern "C"{
  * computation can be cloned by copying the context (e.g. with a simple
  * <code>memcpy()</code>).
  */
-typedef struct {
+typedef struct sph_hamsi_small_context
+{
 #ifndef DOXYGEN_IGNORE
     unsigned char partial[4];
     size_t partial_len;
@@ -107,7 +108,8 @@ typedef sph_hamsi_small_context sph_hamsi256_context;
  * computation can be cloned by copying the context (e.g. with a simple
  * <code>memcpy()</code>).
  */
-typedef struct {
+typedef struct sph_hamsi_big_context
+{
 #ifndef DOXYGEN_IGNORE
     unsigned char partial[8];
     size_t partial_len;

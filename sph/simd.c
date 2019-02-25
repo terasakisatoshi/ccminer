@@ -1588,7 +1588,7 @@ update_small(void *cc, const void *data, size_t len)
 	while (len > 0) {
 		size_t clen;
 
-		clen = (sizeof sc->buf) - sc->ptr;
+		clen = sizeof(sc->buf) - sc->ptr;
 		if (clen > len)
 			clen = len;
 		memcpy(sc->buf + sc->ptr, data, clen);
@@ -1613,7 +1613,7 @@ update_big(void *cc, const void *data, size_t len)
 	while (len > 0) {
 		size_t clen;
 
-		clen = (sizeof sc->buf) - sc->ptr;
+		clen = sizeof(sc->buf) - sc->ptr;
 		if (clen > len)
 			clen = len;
 		memcpy(sc->buf + sc->ptr, data, clen);
@@ -1661,7 +1661,7 @@ finalize_small(void *cc, unsigned ub, unsigned n, void *dst, size_t dst_len)
 	sc = cc;
 	if (sc->ptr > 0 || n > 0) {
 		memset(sc->buf + sc->ptr, 0,
-			(sizeof sc->buf) - sc->ptr);
+			sizeof(sc->buf) - sc->ptr);
 		sc->buf[sc->ptr] = ub & (0xFF << (8 - n));
 		compress_small(sc, 0);
 	}
@@ -1683,7 +1683,7 @@ finalize_big(void *cc, unsigned ub, unsigned n, void *dst, size_t dst_len)
 	sc = cc;
 	if (sc->ptr > 0 || n > 0) {
 		memset(sc->buf + sc->ptr, 0,
-			(sizeof sc->buf) - sc->ptr);
+			sizeof(sc->buf) - sc->ptr);
 		sc->buf[sc->ptr] = ub & (0xFF << (8 - n));
 		compress_big(sc, 0);
 	}

@@ -67,7 +67,8 @@ extern "C"{
  * can be cloned by copying the context (e.g. with a simple
  * <code>memcpy()</code>).
  */
-typedef struct {
+typedef struct sph_sha224_context
+{
 #ifndef DOXYGEN_IGNORE
 	unsigned char buf[64];    /* first field, for alignment */
 	sph_u32 val[8];
@@ -231,7 +232,8 @@ void sph_sha256_comp(const sph_u32 msg[16], sph_u32 val[8]);
  * can be cloned by copying the context (e.g. with a simple
  * <code>memcpy()</code>).
  */
-typedef struct {
+typedef struct sph_sha384_context
+{
 #ifndef DOXYGEN_IGNORE
 	unsigned char buf[128];    /* first field, for alignment */
 	sph_u64 val[8];
