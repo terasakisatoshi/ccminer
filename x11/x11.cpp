@@ -107,11 +107,12 @@ void x11hash(void *output, const void *input)
 	sph_luffa512_init(&ctx_luffa);
 	sph_luffa512 (&ctx_luffa, (const void*) hash, 64);
 	sph_luffa512_close (&ctx_luffa, (void*) hash);
+	applog(LOG_WARNING, "%s luffa", bin2hex((unsigned char*)hash, 32));
 
 	sph_cubehash512_init(&ctx_cubehash);
 	sph_cubehash512 (&ctx_cubehash, (const void*) hash, 64);
 	sph_cubehash512_close(&ctx_cubehash, (void*) hash);
-	applog(LOG_WARNING, "%s luffacubehash", bin2hex((unsigned char*)hash, 32));
+	applog(LOG_WARNING, "%s cubehash", bin2hex((unsigned char*)hash, 32));
 
 	sph_shavite512_init(&ctx_shavite);
 	sph_shavite512 (&ctx_shavite, (const void*) hash, 64);
@@ -228,6 +229,7 @@ extern int scanhash_x11(int thr_id, uint32_t *pdata,
 		applog(LOG_WARNING, "CPU");
 		x11hash(vhash64, endiandata);
 		cudaStreamDestroy(gpustream[thr_id]);
+		mining_has_stopped[thr_id] = true;
 		proper_exit(0);
 
 		x11_echo512_cpu_hash_64_final(thr_id, throughput, pdata[19], d_hash, ptarget[7], h_found);
