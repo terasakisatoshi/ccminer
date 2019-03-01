@@ -36,11 +36,7 @@
 #ifndef SPH_LUFFA_H__
 #define SPH_LUFFA_H__
 
-#ifdef __cplusplus
-extern "C"{
-#endif
-
-#include <stddef.h>
+#include <cstddef>
 #include "sph_types.h"
 
 /**
@@ -115,7 +111,8 @@ typedef struct {
  * @param cc   the Luffa-224 context (pointer to a
  *             <code>sph_luffa224_context</code>)
  */
-void sph_luffa224_init(void *cc);
+void
+sph_luffa224_init(sph_luffa224_context *cc);
 
 /**
  * Process some data bytes. It is acceptable that <code>len</code> is zero
@@ -125,7 +122,8 @@ void sph_luffa224_init(void *cc);
  * @param data   the input data
  * @param len    the input data length (in bytes)
  */
-void sph_luffa224(void *cc, const void *data, size_t len);
+void
+sph_luffa224(sph_luffa224_context *cc, const void *data, size_t len);
 
 /**
  * Terminate the current Luffa-224 computation and output the result into
@@ -136,7 +134,7 @@ void sph_luffa224(void *cc, const void *data, size_t len);
  * @param cc    the Luffa-224 context
  * @param dst   the destination buffer
  */
-void sph_luffa224_close(void *cc, void *dst);
+void sph_luffa224_close(sph_luffa224_context *cc, unsigned char *dst);
 
 /**
  * Add a few additional bits (0 to 7) to the current computation, then
@@ -151,8 +149,8 @@ void sph_luffa224_close(void *cc, void *dst);
  * @param n     the number of extra bits (0 to 7)
  * @param dst   the destination buffer
  */
-void sph_luffa224_addbits_and_close(
-	void *cc, unsigned ub, unsigned n, void *dst);
+void
+sph_luffa224_addbits_and_close(sph_luffa224_context *cc, unsigned ub, unsigned n, unsigned char *dst);
 
 /**
  * Initialize a Luffa-256 context. This process performs no memory allocation.
@@ -160,7 +158,8 @@ void sph_luffa224_addbits_and_close(
  * @param cc   the Luffa-256 context (pointer to a
  *             <code>sph_luffa256_context</code>)
  */
-void sph_luffa256_init(void *cc);
+void
+sph_luffa256_init(sph_luffa256_context *cc);
 
 /**
  * Process some data bytes. It is acceptable that <code>len</code> is zero
@@ -170,7 +169,8 @@ void sph_luffa256_init(void *cc);
  * @param data   the input data
  * @param len    the input data length (in bytes)
  */
-void sph_luffa256(void *cc, const void *data, size_t len);
+void
+sph_luffa256(sph_luffa224_context *cc, const void *data, size_t len);
 
 /**
  * Terminate the current Luffa-256 computation and output the result into
@@ -181,7 +181,7 @@ void sph_luffa256(void *cc, const void *data, size_t len);
  * @param cc    the Luffa-256 context
  * @param dst   the destination buffer
  */
-void sph_luffa256_close(void *cc, void *dst);
+void sph_luffa256_close(sph_luffa224_context *cc, unsigned char *dst);
 
 /**
  * Add a few additional bits (0 to 7) to the current computation, then
@@ -196,8 +196,8 @@ void sph_luffa256_close(void *cc, void *dst);
  * @param n     the number of extra bits (0 to 7)
  * @param dst   the destination buffer
  */
-void sph_luffa256_addbits_and_close(
-	void *cc, unsigned ub, unsigned n, void *dst);
+void
+sph_luffa256_addbits_and_close(sph_luffa224_context *cc, unsigned ub, unsigned n, unsigned char *dst);
 
 /**
  * Initialize a Luffa-384 context. This process performs no memory allocation.
@@ -205,7 +205,8 @@ void sph_luffa256_addbits_and_close(
  * @param cc   the Luffa-384 context (pointer to a
  *             <code>sph_luffa384_context</code>)
  */
-void sph_luffa384_init(void *cc);
+void
+sph_luffa384_init(sph_luffa384_context *cc);
 
 /**
  * Process some data bytes. It is acceptable that <code>len</code> is zero
@@ -215,7 +216,8 @@ void sph_luffa384_init(void *cc);
  * @param data   the input data
  * @param len    the input data length (in bytes)
  */
-void sph_luffa384(void *cc, const void *data, size_t len);
+void
+sph_luffa384(sph_luffa384_context *cc, const void *data, size_t len);
 
 /**
  * Terminate the current Luffa-384 computation and output the result into
@@ -226,7 +228,7 @@ void sph_luffa384(void *cc, const void *data, size_t len);
  * @param cc    the Luffa-384 context
  * @param dst   the destination buffer
  */
-void sph_luffa384_close(void *cc, void *dst);
+void sph_luffa384_close(sph_luffa384_context *cc, unsigned char *dst);
 
 /**
  * Add a few additional bits (0 to 7) to the current computation, then
@@ -241,8 +243,8 @@ void sph_luffa384_close(void *cc, void *dst);
  * @param n     the number of extra bits (0 to 7)
  * @param dst   the destination buffer
  */
-void sph_luffa384_addbits_and_close(
-	void *cc, unsigned ub, unsigned n, void *dst);
+void
+sph_luffa384_addbits_and_close(sph_luffa384_context *cc, unsigned ub, unsigned n, unsigned char *dst);
 
 /**
  * Initialize a Luffa-512 context. This process performs no memory allocation.
@@ -250,7 +252,8 @@ void sph_luffa384_addbits_and_close(
  * @param cc   the Luffa-512 context (pointer to a
  *             <code>sph_luffa512_context</code>)
  */
-void sph_luffa512_init(void *cc);
+void
+sph_luffa512_init(sph_luffa512_context *cc);
 
 /**
  * Process some data bytes. It is acceptable that <code>len</code> is zero
@@ -260,7 +263,8 @@ void sph_luffa512_init(void *cc);
  * @param data   the input data
  * @param len    the input data length (in bytes)
  */
-void sph_luffa512(void *cc, const void *data, size_t len);
+void
+sph_luffa512(sph_luffa512_context *cc, const void *data, size_t len);
 
 /**
  * Terminate the current Luffa-512 computation and output the result into
@@ -271,7 +275,7 @@ void sph_luffa512(void *cc, const void *data, size_t len);
  * @param cc    the Luffa-512 context
  * @param dst   the destination buffer
  */
-void sph_luffa512_close(void *cc, void *dst);
+void sph_luffa512_close(sph_luffa512_context *cc, unsigned char *dst);
 
 /**
  * Add a few additional bits (0 to 7) to the current computation, then
@@ -286,11 +290,7 @@ void sph_luffa512_close(void *cc, void *dst);
  * @param n     the number of extra bits (0 to 7)
  * @param dst   the destination buffer
  */
-void sph_luffa512_addbits_and_close(
-	void *cc, unsigned ub, unsigned n, void *dst);
-	
-#ifdef __cplusplus
-}
-#endif
+void
+sph_luffa512_addbits_and_close(sph_luffa512_context *cc, unsigned ub, unsigned n, unsigned char *dst);
 	
 #endif

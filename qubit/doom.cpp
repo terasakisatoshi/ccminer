@@ -2,10 +2,7 @@
  * qubit algorithm
  *
  */
-extern "C" {
 #include "sph/sph_luffa.h"
-}
-
 #include "miner.h"
 
 #include "cuda_helper.h"
@@ -25,7 +22,7 @@ extern void doomhash(void *state, const void *input)
 
 	sph_luffa512_init(&ctx_luffa);
 	sph_luffa512 (&ctx_luffa, input, 80);
-	sph_luffa512_close(&ctx_luffa, (void*) hash);
+	sph_luffa512_close(&ctx_luffa, hash);
 
 	memcpy(state, hash, 32);
 }

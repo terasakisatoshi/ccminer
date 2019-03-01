@@ -9,8 +9,6 @@ extern "C"
 #include "sph/sph_skein.h"
 #include "sph/sph_jh.h"
 #include "sph/sph_keccak.h"
-
-#include "sph/sph_luffa.h"
 #include "sph/sph_cubehash.h"
 #include "sph/sph_shavite.h"
 #include "sph/sph_simd.h"
@@ -19,6 +17,8 @@ extern "C"
 #include "sph/sph_hamsi.h"
 #include "sph/sph_fugue.h"
 }
+#include "sph/sph_luffa.h"
+
 #include "miner.h"
 
 #include "cuda_helper.h"
@@ -116,7 +116,7 @@ void x13hash(void *output, const void *input)
 
 	sph_luffa512_init(&ctx_luffa);
 	sph_luffa512 (&ctx_luffa, (const void*) hash, 64);
-	sph_luffa512_close (&ctx_luffa, (void*) hash);
+	sph_luffa512_close (&ctx_luffa, (unsigned char*)hash);
 
 	sph_cubehash512_init(&ctx_cubehash);
 	sph_cubehash512 (&ctx_cubehash, (const void*) hash, 64);

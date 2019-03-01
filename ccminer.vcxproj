@@ -301,7 +301,6 @@
     <ClCompile Include="nvml.cpp" />
     <ClCompile Include="api.cpp" />
     <ClCompile Include="sysinfos.cpp" />
-    <ClCompile Include="crc32.c" />
     <ClCompile Include="myriadgroestl.cpp" />
     <ClCompile Include="lyra2\Lyra2.c" />
     <ClCompile Include="lyra2\Sponge.c" />
@@ -318,7 +317,7 @@
     </ClCompile>
     <ClCompile Include="sph\jh.c" />
     <ClCompile Include="sph\keccak.c" />
-    <ClCompile Include="sph\luffa.c" />
+    <ClCompile Include="sph\luffa.cpp" />
     <ClCompile Include="sph\md_helper.c">
       <ExcludedFromBuild>true</ExcludedFromBuild>
     </ClCompile>

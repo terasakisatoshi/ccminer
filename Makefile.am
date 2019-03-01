@@ -18,7 +18,6 @@ bin_PROGRAMS = ccminer
 ccminer_SOURCES = elist.h miner.h compat.h \
 			  compat/inttypes.h compat/stdbool.h compat/unistd.h \
 			  compat/sys/time.h compat/getopt/getopt.h \
-			  crc32.c \
 			  ccminer.cpp util.cpp \
 			  api.cpp hashlog.cpp stats.cpp sysinfos.cpp cuda.cpp \
 			  nvml.cpp nvml.h nvsettings.cpp \
@@ -44,9 +43,10 @@ ccminer_SOURCES = elist.h miner.h compat.h \
 			  Sia/sia.cpp Sia/cuda_sia.cu \
 			  sph/bmw.c sph/blake.c sph/groestl.c sph/jh.c sph/keccak.c sph/skein.c \
 			  BlueMidnightWish_opt.c SHA3api_ref.h \
-			  sph/cubehash.c sph/echo.c sph/luffa.c sph/sha2.c sph/shavite.c sph/simd.c \
+			  sph/cubehash.c sph/echo.c sph/sha2.c sph/shavite.c sph/simd.c \
 			  sph/hamsi.c sph/hamsi_helper.c sph/sph_hamsi.h \
 			  sph/shabal.c sph/whirlpool.c sph/sha2big.c sph/haval.c \
+			  sph/luffa.cpp \
 			  qubit/qubit.cpp qubit/qubit_luffa512.cu qubit/deep.cpp qubit/doom.cpp \
 			  x11/x11.cpp x11/fresh.cpp x11/cuda_x11_luffa512.cu x11/cuda_x11_cubehash512.cu \
 			  x11/cuda_x11_shavite512.cu x11/cuda_x11_echo.cu \

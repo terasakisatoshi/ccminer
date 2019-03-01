@@ -47,7 +47,12 @@
 #ifndef SPH_TYPES_H__
 #define SPH_TYPES_H__
 
+#ifdef __cplusplus
+#include <climits>
+using namespace std;
+#else
 #include <limits.h>
+#endif
 
 /*
  * All our I/O functions are defined over octet streams. We do not know
@@ -816,9 +821,7 @@ static inline void sph_enc64be_aligned(void *dst, sph_u64 val);
 #undef SPH_64
 #undef SPH_64_TRUE
 
-#include <limits.h>
-
-#if defined _MSC_VER || (defined __STDC__ && __STDC_VERSION__ >= 199901L)
+#if defined _MSC_VER || (defined __STDC__ && __STDC_VERSION__ >= 199901L) || defined __cplusplus
 
 /*
  * On C99 implementations, we can use <stdint.h> to get an exact 64-bit
@@ -828,8 +831,11 @@ static inline void sph_enc64be_aligned(void *dst, sph_u64 val);
 
 #ifdef __cplusplus
 #include <cstdint>
+#include <cstdlib>
+using namespace std;
 #else
 #include <stdint.h>
+#include <stdlib.h>
 #endif
 
 #ifdef UINT32_MAX

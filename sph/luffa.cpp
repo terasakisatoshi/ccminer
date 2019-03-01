@@ -30,15 +30,12 @@
  * @author   Thomas Pornin <thomas.pornin@cryptolog.com>
  */
 
-#include <stddef.h>
-#include <string.h>
-#include <limits.h>
+#include <cstddef>
+#include <cstring>
+#include <climits>
+using namespace std;
 
 #include "sph_luffa.h"
-
-#ifdef __cplusplus
-extern "C"{
-#endif
 
 #if SPH_64_TRUE && !defined SPH_LUFFA_PARALLEL
 #define SPH_LUFFA_PARALLEL   1
@@ -1090,7 +1087,7 @@ luffa3(sph_luffa224_context *sc, const void *data, size_t len)
 
 static void
 luffa3_close(sph_luffa224_context *sc, unsigned ub, unsigned n,
-	void *dst, unsigned out_size_w32)
+	unsigned char *dst, unsigned out_size_w32)
 {
 	unsigned char *buf, *out;
 	size_t ptr;
@@ -1159,7 +1156,7 @@ luffa4(sph_luffa384_context *sc, const void *data, size_t len)
 }
 
 static void
-luffa4_close(sph_luffa384_context *sc, unsigned ub, unsigned n, void *dst)
+luffa4_close(sph_luffa384_context *sc, unsigned ub, unsigned n, unsigned char *dst)
 {
 	unsigned char *buf, *out;
 	size_t ptr;
@@ -1239,7 +1236,7 @@ luffa5(sph_luffa512_context *sc, const void *data, size_t len)
 }
 
 static void
-luffa5_close(sph_luffa512_context *sc, unsigned ub, unsigned n, void *dst)
+luffa5_close(sph_luffa512_context *sc, unsigned ub, unsigned n, unsigned char *dst)
 {
 	unsigned char *buf, *out;
 	size_t ptr;
@@ -1287,7 +1284,7 @@ luffa5_close(sph_luffa512_context *sc, unsigned ub, unsigned n, void *dst)
 
 /* see sph_luffa.h */
 void
-sph_luffa224_init(void *cc)
+sph_luffa224_init(sph_luffa224_context *cc)
 {
 	sph_luffa224_context *sc;
 
@@ -1298,21 +1295,21 @@ sph_luffa224_init(void *cc)
 
 /* see sph_luffa.h */
 void
-sph_luffa224(void *cc, const void *data, size_t len)
+sph_luffa224(sph_luffa224_context *cc, const void *data, size_t len)
 {
 	luffa3(cc, data, len);
 }
 
 /* see sph_luffa.h */
 void
-sph_luffa224_close(void *cc, void *dst)
+sph_luffa224_close(sph_luffa224_context *cc, unsigned char *dst)
 {
 	sph_luffa224_addbits_and_close(cc, 0, 0, dst);
 }
 
 /* see sph_luffa.h */
 void
-sph_luffa224_addbits_and_close(void *cc, unsigned ub, unsigned n, void *dst)
+sph_luffa224_addbits_and_close(sph_luffa224_context *cc, unsigned ub, unsigned n, unsigned char *dst)
 {
 	luffa3_close(cc, ub, n, dst, 7);
 	sph_luffa224_init(cc);
@@ -1320,7 +1317,7 @@ sph_luffa224_addbits_and_close(void *cc, unsigned ub, unsigned n, void *dst)
 
 /* see sph_luffa.h */
 void
-sph_luffa256_init(void *cc)
+sph_luffa256_init(sph_luffa256_context *cc)
 {
 	sph_luffa256_context *sc;
 
@@ -1331,21 +1328,21 @@ sph_luffa256_init(void *cc)
 
 /* see sph_luffa.h */
 void
-sph_luffa256(void *cc, const void *data, size_t len)
+sph_luffa256(sph_luffa224_context *cc, const void *data, size_t len)
 {
 	luffa3(cc, data, len);
 }
 
 /* see sph_luffa.h */
 void
-sph_luffa256_close(void *cc, void *dst)
+sph_luffa256_close(sph_luffa224_context *cc, unsigned char *dst)
 {
 	sph_luffa256_addbits_and_close(cc, 0, 0, dst);
 }
 
 /* see sph_luffa.h */
 void
-sph_luffa256_addbits_and_close(void *cc, unsigned ub, unsigned n, void *dst)
+sph_luffa256_addbits_and_close(sph_luffa224_context *cc, unsigned ub, unsigned n, unsigned char *dst)
 {
 	luffa3_close(cc, ub, n, dst, 8);
 	sph_luffa256_init(cc);
@@ -1353,7 +1350,7 @@ sph_luffa256_addbits_and_close(void *cc, unsigned ub, unsigned n, void *dst)
 
 /* see sph_luffa.h */
 void
-sph_luffa384_init(void *cc)
+sph_luffa384_init(sph_luffa384_context *cc)
 {
 	sph_luffa384_context *sc;
 
@@ -1364,21 +1361,21 @@ sph_luffa384_init(void *cc)
 
 /* see sph_luffa.h */
 void
-sph_luffa384(void *cc, const void *data, size_t len)
+sph_luffa384(sph_luffa384_context *cc, const void *data, size_t len)
 {
 	luffa4(cc, data, len);
 }
 
 /* see sph_luffa.h */
 void
-sph_luffa384_close(void *cc, void *dst)
+sph_luffa384_close(sph_luffa384_context *cc, unsigned char *dst)
 {
 	sph_luffa384_addbits_and_close(cc, 0, 0, dst);
 }
 
 /* see sph_luffa.h */
 void
-sph_luffa384_addbits_and_close(void *cc, unsigned ub, unsigned n, void *dst)
+sph_luffa384_addbits_and_close(sph_luffa384_context *cc, unsigned ub, unsigned n, unsigned char *dst)
 {
 	luffa4_close(cc, ub, n, dst);
 	sph_luffa384_init(cc);
@@ -1386,7 +1383,7 @@ sph_luffa384_addbits_and_close(void *cc, unsigned ub, unsigned n, void *dst)
 
 /* see sph_luffa.h */
 void
-sph_luffa512_init(void *cc)
+sph_luffa512_init(sph_luffa512_context *cc)
 {
 	sph_luffa512_context *sc;
 
@@ -1397,26 +1394,22 @@ sph_luffa512_init(void *cc)
 
 /* see sph_luffa.h */
 void
-sph_luffa512(void *cc, const void *data, size_t len)
+sph_luffa512(sph_luffa512_context *cc, const void *data, size_t len)
 {
 	luffa5(cc, data, len);
 }
 
 /* see sph_luffa.h */
 void
-sph_luffa512_close(void *cc, void *dst)
+sph_luffa512_close(sph_luffa512_context *cc, unsigned char *dst)
 {
 	sph_luffa512_addbits_and_close(cc, 0, 0, dst);
 }
 
 /* see sph_luffa.h */
 void
-sph_luffa512_addbits_and_close(void *cc, unsigned ub, unsigned n, void *dst)
+sph_luffa512_addbits_and_close(sph_luffa512_context *cc, unsigned ub, unsigned n, unsigned char *dst)
 {
 	luffa5_close(cc, ub, n, dst);
 	sph_luffa512_init(cc);
 }
-
-#ifdef __cplusplus
-}
-#endif

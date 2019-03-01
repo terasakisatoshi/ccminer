@@ -10,8 +10,6 @@ extern "C" {
 #include "sph/sph_skein.h"
 #include "sph/sph_jh.h"
 #include "sph/sph_keccak.h"
-
-#include "sph/sph_luffa.h"
 #include "sph/sph_cubehash.h"
 #include "sph/sph_shavite.h"
 #include "sph/sph_simd.h"
@@ -22,6 +20,7 @@ extern "C" {
 #include "sph/sph_shabal.h"
 #include "sph/sph_whirlpool.h"
 }
+#include "sph/sph_luffa.h"
 
 #include "miner.h"
 

@@ -90,9 +90,6 @@
     <ClCompile Include="ccminer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="crc32.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="sph\aes_helper.c">
       <Filter>Source Files\sph</Filter>
     </ClCompile>
@@ -118,9 +115,6 @@
       <Filter>Source Files\sph</Filter>
     </ClCompile>
     <ClCompile Include="sph\keccak.c">
-      <Filter>Source Files\sph</Filter>
-    </ClCompile>
-    <ClCompile Include="sph\luffa.c">
       <Filter>Source Files\sph</Filter>
     </ClCompile>
     <ClCompile Include="sph\md_helper.c">
@@ -209,6 +203,9 @@
     </ClCompile>
     <ClCompile Include="sph\neoscrypt-cpu.cpp">
       <Filter>Source Files\CUDA\neoscrypt</Filter>
+    </ClCompile>
+    <ClCompile Include="sph\luffa.cpp">
+      <Filter>Source Files\sph</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

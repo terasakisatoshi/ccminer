@@ -4,8 +4,6 @@
  * Tanguy Pruvot - Nov. 2014
  */
 
-#define PRECALC64 1
-
 #include "miner.h"
 
 extern "C" {
@@ -39,17 +37,8 @@ void blake256hash(void *output, const void *input, int8_t rounds = 14)
 
 #include "cuda_helper.h"
 
-#if PRECALC64
 __constant__ uint32_t _ALIGN(32) d_data[15];
 static THREAD uint32_t *h_data;
-#else
-__constant__ static uint32_t _ALIGN(32) c_data[20];
-/* midstate hash cache, this algo is run on 2 parts */
-__device__ static uint32_t cache[8];
-__device__ static uint32_t prevsum = 0;
-/* crc32.c */
-extern "C" uint32_t crc32_u32t(const uint32_t *buf, size_t size);
-#endif
 
 /* 8 adapters max */
 static uint32_t *d_resNonce[MAX_GPUS];
@@ -58,16 +47,6 @@ static THREAD uint32_t *h_resNonce;
 /* max count of found nonces in one call */
 #define NBN 2
 static uint32_t extra_results[MAX_GPUS][NBN] = { UINT32_MAX };
-
-#if !PRECALC64
-__device__ __constant__
-static const uint32_t __align__(32) c_IV256[8] = {
-	SPH_C32(0x6A09E667), SPH_C32(0xBB67AE85),
-	SPH_C32(0x3C6EF372), SPH_C32(0xA54FF53A),
-	SPH_C32(0x510E527F), SPH_C32(0x9B05688C),
-	SPH_C32(0x1F83D9AB), SPH_C32(0x5BE0CD19)
-};
-#endif
 
 #define GSPREC(a,b,c,d,x,y) { \
 	v[a] += (m[x] ^ c_u256[y]) + v[b]; \
@@ -115,11 +94,7 @@ void blake256_compress(uint32_t *h, const uint32_t *block, const uint32_t T0, co
 	#pragma unroll
 	for (uint32_t i = 4; i < 16; i++) 
 	{
-#if PRECALC64
 		m[i] = c_Padding[i];
-#else
-		m[i] = (T0 == 0x200) ? block[i] : c_Padding[i];
-#endif
 	}
 
 #pragma unroll
@@ -269,17 +244,9 @@ void blake256_compress(uint32_t *h, const uint32_t *block, const uint32_t T0, co
 //	GSPREC(3, 4, 0x9, 0xE, 15, 8);
 
 
-#if PRECALC64
-	// only compute h6 & 7
+// only compute h6 & 7
 //	h[6U] ^= v[6U] ^ v[14U];
 	h[7] ^= v[7] ^ v[15];
-#else
-	//#pragma unroll 16
-	for (uint32_t i = 0; i < 16; i++) {
-		uint32_t j = i & 7U;
-		h[j] ^= v[i];
-	}
-#endif
 }
 
 
@@ -414,112 +381,10 @@ void blake256_compress_8(uint32_t *const __restrict__ h, const uint32_t *const _
 	//	{ 6, 15, 14, 9, 11, 3, 0, 8, 12, 2, 13, 7, 1, 4, 10, 5 },
 
 
-#if PRECALC64
-	// only compute h6 & 7
+// only compute h6 & 7
 //	h[6] ^= v[6] ^ v[14];
 	h[7] ^= v[7] ^ v[15];
-#else
-	//#pragma unroll 16
-	for (uint32_t i = 0; i < 16; i++) {
-		uint32_t j = i & 7U;
-		h[j] ^= v[i];
-	}
-#endif
 }
-
-
-#if !PRECALC64 /* original method */
-__global__
-void blake256_gpu_hash_80(const uint32_t threads, const uint32_t startNonce, uint32_t *resNonce,
-	const uint64_t highTarget, const int crcsum, const int rounds)
-{
-	const uint32_t thread = (blockDim.x * blockIdx.x + threadIdx.x);
-	if (thread < threads)
-	{
-		const uint32_t nonce = startNonce + thread;
-		uint32_t h[8];
-
-		#pragma unroll
-		for(int i=0; i<8; i++) {
-			h[i] = c_IV256[i];
-		}
-
-		if (crcsum != prevsum) {
-			prevsum = crcsum;
-			blake256_compress(h, c_data, 512, rounds);
-			#pragma unroll
-			for(int i=0; i<8; i++) {
-				cache[i] = h[i];
-			}
-		} else {
-			#pragma unroll
-			for(int i=0; i<8; i++) {
-				h[i] = cache[i];
-			}
-		}
-
-		// ------ Close: Bytes 64 to 80 ------
-
-		uint32_t ending[4];
-		ending[0] = c_data[16];
-		ending[1] = c_data[17];
-		ending[2] = c_data[18];
-		ending[3] = nonce; /* our tested value */
-
-		blake256_compress(h, ending, 640, rounds);
-
-		// not sure why, h[7] is ok
-		h[6] = cuda_swab32(h[6]);
-
-		// compare count of leading zeros h[6] + h[7]
-		uint64_t high64 = ((uint64_t*)h)[3];
-		if (high64 <= highTarget)
-#if NBN == 2
-		/* keep the smallest nonce, + extra one if found */
-		if (resNonce[0] > nonce) {
-			// printf("%llx %llx \n", high64, highTarget);
-			resNonce[1] = resNonce[0];
-			resNonce[0] = nonce;
-		}
-		else
-			resNonce[1] = nonce;
-#else
-		resNonce[0] = nonce;
-#endif
-	}
-}
-
-__host__
-uint32_t blake256_cpu_hash_80(const int thr_id, const uint32_t threads, const uint32_t startNonce, const uint64_t highTarget,
-	const uint32_t crcsum, const int8_t rounds)
-{
-	uint32_t result = UINT32_MAX;
-
-	dim3 grid((threads + TPB-1)/TPB);
-	dim3 block(TPB);
-	/* Check error on Ctrl+C or kill to prevent segfaults on exit */
-	if (cudaMemset(d_resNonce[thr_id], 0xff, NBN*sizeof(uint32_t)) != cudaSuccess)
-		return result;
-
-	blake256_gpu_hash_80<<<grid, block, 0, gpustream[thr_id]>>>(threads, startNonce, d_resNonce[thr_id], highTarget, crcsum, (int) rounds);
-	//cudaDeviceSynchronize();
-	if (cudaSuccess == cudaMemcpyAsync(h_resNonce[thr_id], d_resNonce[thr_id], NBN*sizeof(uint32_t), cudaMemcpyDeviceToHost)) {
-		//cudaDeviceSynchronize(); /* seems no more required */
-		result = h_resNonce[thr_id][0];
-		for (int n=0; n < (NBN-1); n++)
-			extra_results[thr_id][n] = h_resNonce[thr_id][n+1];
-	}
-	return result;
-}
-
-__host__
-void blake256_cpu_setBlock_80(int thr_id, uint32_t *pdata, const uint32_t *ptarget)
-{
-	uint32_t data[20];
-	memcpy(data, pdata, 80);
-	CUDA_SAFE_CALL(cudaMemcpyToSymbolAsync(c_data, data, sizeof(data), 0, cudaMemcpyHostToDevice));
-}
-#else
 
 /* ############################################################################################################################### */
 /* Precalculated 1st 64-bytes block (midstate) method */
@@ -680,18 +545,14 @@ static void blake256_cpu_setBlock_16(int thr_id, uint32_t *penddata, const uint3
 
 	CUDA_SAFE_CALL(cudaMemcpyToSymbolAsync(d_data, h_data, 15 * 4, 0, cudaMemcpyHostToDevice, gpustream[thr_id]));
 }
-#endif
 
 extern int scanhash_blake256(int thr_id, uint32_t *pdata, uint32_t *ptarget,
 	uint32_t max_nonce, uint32_t *hashes_done, int8_t blakerounds=14)
 {
 	const uint32_t first_nonce = pdata[19];
 	uint32_t _ALIGN(64) endiandata[20];
-#if PRECALC64
 	uint32_t _ALIGN(64) midstate[8];
-#else
-	uint32_t crcsum;
-#endif
+
 	unsigned int intensity = 28;
 	uint32_t throughputmax = device_intensity(device_map[thr_id], __func__, 1U << intensity);
 	uint32_t throughput = min(throughputmax, max_nonce - first_nonce) & 0xfffffc00;
@@ -731,24 +592,14 @@ extern int scanhash_blake256(int thr_id, uint32_t *pdata, uint32_t *ptarget,
 		init = true;
 	}
 
-#if PRECALC64
 	for (int k = 0; k < 16; k++)
 		be32enc(&endiandata[k], pdata[k]);
 	blake256mid(midstate, endiandata, blakerounds);
 	blake256_cpu_setBlock_16(thr_id, &pdata[16], midstate, ptarget);
-#else
-	blake256_cpu_setBlock_80(thr_id, pdata, ptarget);
-	crcsum = crc32_u32t(pdata, 64);
-#endif /* PRECALC64 */
 
 	do {
-#if PRECALC64
 		// GPU HASH (second block only, first is midstate)
 		uint32_t foundNonce =	blake256_cpu_hash_16(thr_id, throughput, pdata[19], target6, target7, blakerounds);
-#else
-		// GPU FULL HASH
-		uint32_t foundNonce =	blake256_cpu_hash_80(thr_id, throughput, pdata[19], targetHigh, crcsum, blakerounds);
-#endif
 		if(stop_mining) {mining_has_stopped[thr_id] = true; cudaStreamDestroy(gpustream[thr_id]); pthread_exit(nullptr);}
 		if(foundNonce != UINT32_MAX)
 		{

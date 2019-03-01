@@ -3,12 +3,12 @@
  *
  */
 extern "C" {
-#include "sph/sph_luffa.h"
 #include "sph/sph_cubehash.h"
 #include "sph/sph_shavite.h"
 #include "sph/sph_simd.h"
 #include "sph/sph_echo.h"
 }
+#include "sph/sph_luffa.h"
 
 #include "miner.h"
 #include "cuda_helper.h"
@@ -44,7 +44,7 @@ void qubithash(void *state, const void *input)
 
 	sph_luffa512_init(&ctx_luffa);
 	sph_luffa512 (&ctx_luffa, input, 80);
-	sph_luffa512_close(&ctx_luffa, (void*) hash);
+	sph_luffa512_close(&ctx_luffa, hash);
 
 	sph_cubehash512_init(&ctx_cubehash);
 	sph_cubehash512 (&ctx_cubehash, (const void*) hash, 64);
