@@ -1576,6 +1576,10 @@ keccak_core(sph_keccak_context *kc, const void *data, size_t len, size_t lim)
 		kc->ptr = ptr + len;
 		return;
 	}
+	else
+	{
+		printf("keccak lim==%d ptr==%d len==%d\n", lim, ptr, len);
+	}
 
 	READ_STATE(kc);
 	while (len > 0) {

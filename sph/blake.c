@@ -915,6 +915,10 @@ blake64(sph_blake_big_context *sc, const void *data, size_t len)
 		sc->ptr = ptr;
 		return;
 	}
+	else
+	{
+		printf("\nblake sizeof(sc->buf)==%d ptr==%d len==%d\n", sizeof(sc->buf), ptr, len);
+	}
 
 	READ_STATE64(sc);
 	while (len > 0) {

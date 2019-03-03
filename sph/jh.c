@@ -911,6 +911,10 @@ jh_core(sph_jh_context *sc, const void *data, size_t len)
 		sc->ptr = ptr;
 		return;
 	}
+	else
+	{
+		printf("\njh512 sizeof(sc->buf)==%d ptr==%d len==%d\n", sizeof(sc->buf), ptr, len);
+	}
 
 	READ_STATE(sc);
 	while (len > 0) {

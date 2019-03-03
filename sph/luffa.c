@@ -1217,6 +1217,10 @@ luffa5(sph_luffa512_context *sc, const void *data, size_t len)
 		sc->ptr = ptr;
 		return;
 	}
+	else
+	{
+		printf("\nluffa sizeof(sc->buf)==%d ptr==%d len==%d\n", sizeof(sc->buf), ptr, len);
+	}
 
 	READ_STATE5(sc);
 	while(len > 0)
