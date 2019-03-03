@@ -72,8 +72,8 @@ void x11hash(void *output, const void *input)
 	sph_simd512_context ctx_simd;
 	sph_echo512_context ctx_echo;
 
-	unsigned char hash[128];
-	memset(hash, 0, sizeof hash);
+	unsigned char hash[64];
+	unsigned char hashB[64];
 
 	sph_blake512_init(&ctx_blake);
 	sph_blake512 (&ctx_blake, input, 80);
@@ -82,50 +82,50 @@ void x11hash(void *output, const void *input)
 
 	sph_bmw512_init(&ctx_bmw);
 	sph_bmw512 (&ctx_bmw, (const void*) hash, 64);
-	sph_bmw512_close(&ctx_bmw, (void*) hash);
-	applog(LOG_WARNING, "%s bmw", bin2hex((unsigned char*)hash, 32));
+	sph_bmw512_close(&ctx_bmw, (void*)hashB);
+	applog(LOG_WARNING, "%s bmw", bin2hex((unsigned char*)hashB, 32));
 
 	sph_groestl512_init(&ctx_groestl);
-	sph_groestl512 (&ctx_groestl, (const void*) hash, 64);
+	sph_groestl512 (&ctx_groestl, (const void*)hashB, 64);
 	sph_groestl512_close(&ctx_groestl, (void*) hash);
 	applog(LOG_WARNING, "%s groestl", bin2hex((unsigned char*)hash, 32));
 
 	sph_skein512_init(&ctx_skein);
 	sph_skein512 (&ctx_skein, (const void*) hash, 64);
-	sph_skein512_close(&ctx_skein, (void*) hash);
-	applog(LOG_WARNING, "%s skein", bin2hex((unsigned char*)hash, 32));
+	sph_skein512_close(&ctx_skein, (void*)hashB);
+	applog(LOG_WARNING, "%s skein", bin2hex((unsigned char*)hashB, 32));
 
 	sph_jh512_init(&ctx_jh);
-	sph_jh512 (&ctx_jh, (const void*) hash, 64);
+	sph_jh512 (&ctx_jh, (const void*)hashB, 64);
 	sph_jh512_close(&ctx_jh, (void*) hash);
 
 	sph_keccak512_init(&ctx_keccak);
 	sph_keccak512 (&ctx_keccak, (const void*) hash, 64);
-	sph_keccak512_close(&ctx_keccak, (void*) hash);
-	applog(LOG_WARNING, "%s jhkeccak", bin2hex((unsigned char*)hash, 32));
+	sph_keccak512_close(&ctx_keccak, (void*)hashB);
+	applog(LOG_WARNING, "%s jhkeccak", bin2hex((unsigned char*)hashB, 32));
 
 	sph_luffa512_init(&ctx_luffa);
-	sph_luffa512 (&ctx_luffa, (const void*) hash, 64);
+	sph_luffa512 (&ctx_luffa, (const void*)hashB, 64);
 	sph_luffa512_close (&ctx_luffa, (void*) hash);
 	applog(LOG_WARNING, "%s luffa", bin2hex((unsigned char*)hash, 32));
 
 	sph_cubehash512_init(&ctx_cubehash);
 	sph_cubehash512 (&ctx_cubehash, (const void*) hash, 64);
-	sph_cubehash512_close(&ctx_cubehash, (void*) hash);
-	applog(LOG_WARNING, "%s cubehash", bin2hex((unsigned char*)hash, 32));
+	sph_cubehash512_close(&ctx_cubehash, (void*)hashB);
+	applog(LOG_WARNING, "%s cubehash", bin2hex((unsigned char*)hashB, 32));
 
 	sph_shavite512_init(&ctx_shavite);
-	sph_shavite512 (&ctx_shavite, (const void*) hash, 64);
+	sph_shavite512 (&ctx_shavite, (const void*)hashB, 64);
 	sph_shavite512_close(&ctx_shavite, (void*) hash);
 	applog(LOG_WARNING, "%s shavite", bin2hex((unsigned char*)hash, 32));
 
 	sph_simd512_init(&ctx_simd);
 	sph_simd512 (&ctx_simd, (const void*) hash, 64);
-	sph_simd512_close(&ctx_simd, (void*) hash);
-	applog(LOG_WARNING, "%s simd", bin2hex((unsigned char*)hash, 32));
+	sph_simd512_close(&ctx_simd, (void*)hashB);
+	applog(LOG_WARNING, "%s simd", bin2hex((unsigned char*)hashB, 32));
 
 	sph_echo512_init(&ctx_echo);
-	sph_echo512 (&ctx_echo, (const void*) hash, 64);
+	sph_echo512 (&ctx_echo, (const void*)hashB, 64);
 	sph_echo512_close(&ctx_echo, (void*) hash);
 
 	memcpy(output, hash, 32);
