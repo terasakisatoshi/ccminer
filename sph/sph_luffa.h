@@ -106,7 +106,7 @@ typedef struct sph_luffa384_context
 typedef struct sph_luffa512_context
 {
 #ifndef DOXYGEN_IGNORE
-	unsigned char buf[32];    /* first field, for alignment */
+	unsigned char buf[64];    /* first field, for alignment */
 	size_t ptr;
 	sph_u32 V[5][8];
 #endif
