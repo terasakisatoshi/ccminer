@@ -30,6 +30,7 @@ ccminer_SOURCES = elist.h miner.h compat.h \
 			  myriadgroestl.cpp cuda_myriadgroestl.cu \
 			  lyra2/Lyra2.c lyra2/Sponge.c \
 			  lyra2/lyra2REv2.cpp lyra2/cuda_lyra2v2.cu \
+			  lyra2/lyra2REv3.cpp lyra2/cuda_lyra2v3.cu \
 			  Algo256/cuda_blake256.cu Algo256/cuda_groestl256.cu Algo256/cuda_keccak256.cu Algo256/cuda_skein256.cu \
 			  Algo256/cuda_bmw256.cu Algo256/cuda_cubehash256.cu \
 			  Algo256/blake256.cu Algo256/keccak256.cpp \
@@ -48,7 +49,8 @@ ccminer_SOURCES = elist.h miner.h compat.h \
 			  sph/shabal.c sph/whirlpool.c sph/sha2big.c sph/haval.c \
 			  qubit/qubit.cpp qubit/qubit_luffa512.cu qubit/deep.cpp qubit/doom.cpp \
 			  x11/x11.cpp x11/fresh.cpp x11/cuda_x11_luffa512.cu x11/cuda_x11_cubehash512.cu \
-			  x11/cuda_x11_shavite512.cu x11/cuda_x11_simd512.cu x11/cuda_x11_echo.cu \
+			  x11/cuda_x11_shavite512.cu x11/cuda_x11_echo.cu \
+			  x11/cuda_x11_simd512_func.cuh x11/cuda_x11_simd512.cu \
 			  x11/cuda_x11_luffa512_Cubehash.cu \
 			  x13/x13.cpp x13/cuda_x13_hamsi512.cu x13/cuda_x13_fugue512.cu \
 			  x15/x14.cpp x15/x15.cpp x15/cuda_x14_shabal512.cu x15/cuda_x15_whirlpool.cu \
@@ -92,6 +94,7 @@ nvcc_ARCH += -gencode=arch=compute_37,code=sm_37
 nvcc_ARCH += -gencode=arch=compute_35,code=sm_35
 nvcc_ARCH += -gencode=arch=compute_30,code=sm_30
 nvcc_ARCH += -gencode=arch=compute_70,code=sm_70
+nvcc_ARCH += -gencode=arch=compute_75,code=sm_75
 
 nvcc_FLAGS = $(nvcc_ARCH) @CUDA_INCLUDES@ -I. @CUDA_CFLAGS@
 nvcc_FLAGS += $(JANSSON_INCLUDES)
@@ -138,7 +141,7 @@ skein.o: skein.cu
 	$(NVCC) $(nvcc_FLAGS) --maxrregcount=64 -o $@ -c $<
 
 neoscrypt/cuda_neoscrypt.o: neoscrypt/cuda_neoscrypt.cu
-	$(NVCC) -gencode=arch=compute_61,code=sm_61 -gencode=arch=compute_60,code=sm_60 -gencode=arch=compute_52,code=sm_52 -gencode=arch=compute_50,code=sm_50 -gencode=arch=compute_35,code=sm_35 -gencode=arch=compute_37,code=sm_37 -gencode=arch=compute_70,code=sm_70 @CUDA_INCLUDES@ -I. @CUDA_CFLAGS@ -o $@ -c $<
+	$(NVCC) -gencode=arch=compute_61,code=sm_61 -gencode=arch=compute_60,code=sm_60 -gencode=arch=compute_52,code=sm_52 -gencode=arch=compute_50,code=sm_50 -gencode=arch=compute_35,code=sm_35 -gencode=arch=compute_37,code=sm_37 -gencode=arch=compute_70,code=sm_70 -gencode=arch=compute_75,code=sm_75 @CUDA_INCLUDES@ -I. @CUDA_CFLAGS@ -o $@ -c $<
 
 neoscrypt/cuda_neoscrypt_tpruvot.o: neoscrypt/cuda_neoscrypt_tpruvot.cu
-	$(NVCC) -gencode=arch=compute_60,code=sm_60 -gencode=arch=compute_61,code=sm_61 -gencode=arch=compute_70,code=sm_70 @CUDA_INCLUDES@ -I. $(JANSSON_INCLUDES) @CUDA_CFLAGS@ -o $@ -c $<
+	$(NVCC) -gencode=arch=compute_60,code=sm_60 -gencode=arch=compute_61,code=sm_61 -gencode=arch=compute_70,code=sm_70 -gencode=arch=compute_75,code=sm_75 @CUDA_INCLUDES@ -I. $(JANSSON_INCLUDES) @CUDA_CFLAGS@ -o $@ -c $<

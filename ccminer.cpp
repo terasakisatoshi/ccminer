@@ -113,6 +113,7 @@ const char *algo_names[] =
 	"jackpot",
 	"luffa",
 	"lyra2v2",
+	"lyra2v3",
 	"myr-gr",
 	"nist5",
 	"penta",
@@ -250,7 +251,8 @@ Options:\n\
 			jackpot     Jackpot (JHA)\n\
 			keccak      Keccak-256 (Maxcoin)\n\
 			luffa       Doomcoin\n\
-			lyra2v2     VertCoin\n\
+			lyra2v2     Monacoin\n\
+            lyra2v3     Vertcoin\n\
 			myr-gr      Myriad-Groestl\n\
 			neoscrypt   neoscrypt (FeatherCoin)\n\
 			nist5       NIST5 (TalkCoin)\n\
@@ -1373,6 +1375,7 @@ static bool stratum_gen_work(struct stratum_ctx *sctx, struct work *work)
 		case ALGO_GROESTL:
 		case ALGO_KECCAK:
 		case ALGO_LYRA2v2:
+		case ALGO_LYRA2v3:
 			diff_to_target(work->target, sctx->job.diff / (256.0 * opt_difficulty));
 			break;
 		default:
@@ -1629,6 +1632,7 @@ static void *miner_thread(void *userdata)
 				minmax = 1000000 * max64time;
 				break;
 			case ALGO_LYRA2v2:
+			case ALGO_LYRA2v3:
 				minmax = 1900000 * max64time;
 				break;
 			case ALGO_NEO:
@@ -1765,6 +1769,11 @@ static void *miner_thread(void *userdata)
 		case ALGO_LYRA2v2:
 			rc = scanhash_lyra2v2(thr_id, work.data, work.target,
 				max_nonce, &hashes_done);
+			break;
+
+		case ALGO_LYRA2v3:
+			rc = scanhash_lyra2v3(thr_id, work.data, work.target,
+								  max_nonce, &hashes_done);
 			break;
 
 		case ALGO_NIST5:
@@ -2629,16 +2638,16 @@ static void parse_arg(int key, char *arg)
 	break;
 	case 'f': // CH - Divisor for Difficulty
 		d = atof(arg);
-		if(d == 0)	/* sanity check */
+		if(d <= 0.0)	/* sanity check */
 		{
-			printf("Error: diff factor can't be 0\n");
+			printf("Error: diff factor can't be 0 or negative\n");
 			exit(EXIT_FAILURE);
 		}
 		opt_difficulty = d;
 		break;
 	case 'm': // --diff-multiplier
 		d = atof(arg);
-		if(d <= 0.)
+		if(d <= 0.0)
 		{
 			printf("Error: diff multiplier can't be zero or negative\n");
 			exit(EXIT_FAILURE);
@@ -3031,8 +3040,18 @@ int main(int argc, char *argv[])
 	/* init stratum data.. */
 	memset(&stratum.url, 0, sizeof(stratum));
 
-	pthread_mutex_init(&stratum.sock_lock, NULL);
-	pthread_mutex_init(&stratum.work_lock, NULL);
+	int err = pthread_mutex_init(&stratum.sock_lock, NULL);
+	if(err != 0)
+	{
+		applog(LOG_ERR, "pthread_mutex_init error %d", err);
+		proper_exit(EXIT_FAILURE);
+	}
+	err = pthread_mutex_init(&stratum.work_lock, NULL);
+	if(err != 0)
+	{
+		applog(LOG_ERR, "pthread_mutex_init error %d", err);
+		proper_exit(EXIT_FAILURE);
+	}
 
 	if(curl_global_init(CURL_GLOBAL_ALL))
 	{
@@ -3290,12 +3309,23 @@ int main(int argc, char *argv[])
 			return 1;
 		}
 	}
+	int pterr;
 	for(i = 0; i < opt_n_threads; i++)
 	{
 		thr = &thr_info[i];
 		thr->gpu.monitor.sampling_flag = false;
-		pthread_mutex_init(&thr->gpu.monitor.lock, NULL);
-		pthread_cond_init(&thr->gpu.monitor.sampling_signal, NULL);
+		pterr = pthread_mutex_init(&thr->gpu.monitor.lock, NULL);
+		if(pterr != 0)
+		{
+			applog(LOG_ERR, "pthread_mutex_init error %d", pterr);
+			proper_exit(EXIT_FAILURE);
+		}
+		pterr = pthread_cond_init(&thr->gpu.monitor.sampling_signal, NULL);
+		if(pterr != 0)
+		{
+			applog(LOG_ERR, "pthread_cond_init error %d", pterr);
+			proper_exit(EXIT_FAILURE);
+		}
 	}
 
 #ifdef USE_WRAPNVML

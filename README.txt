@@ -1,4 +1,4 @@
-ccMiner release 8.22(KlausT-mod) (Juli 12th, 2018)
+ccMiner release 8.24(KlausT-mod) (February 7th, 2019)
 ---------------------------------------------------------------
 
 ***************************************************************
@@ -74,7 +74,8 @@ its command line interface and options.
 			jackpot     Jackpot
 			keccak      Keccak-256 (Maxcoin)
 			luffa       Doomcoin
-			lyra2v2     VertCoin
+			lyra2v2     Monacoin
+			lyra2v3     Vertcoin
 			myr-gr      Myriad-Groestl
             neoscrypt   neoscrypt (FeatherCoin)
 			nist5       NIST5 (TalkCoin)
@@ -260,6 +261,9 @@ features.
                   fix for intensities between 8 and 9
 2018-07-12 v8.22: add --hwmonitor option
                   some bug fixes
+2018-10-07 v8.23: skein bug fix (lost shares when mining with low difficulty)
+                  fix small memory leak
+2019-02-07 v8.24: add lyra2v3 algo
 
 >>> AUTHORS <<<
 
