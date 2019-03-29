@@ -1121,6 +1121,7 @@ static void *workio_thread(void *userdata)
 		struct workio_cmd *wc;
 
 		/* wait for workio_cmd sent to us, on our queue */
+		applog(LOG_WARNING, "tq_pop thrid==%d", mythr->id);
 		wc = (struct workio_cmd *)tq_pop(mythr->q, NULL);
 		if(!wc)
 		{
@@ -1142,7 +1143,7 @@ static void *workio_thread(void *userdata)
 			ok = false;
 			break;
 		}
-
+		applog(LOG_WARNING, "workio_cmd_free thrid==%d", mythr->id);
 		workio_cmd_free(wc);
 	}
 
@@ -1202,6 +1203,7 @@ static bool get_work(struct thr_info *thr, struct work *work)
 	}
 
 	/* wait for response, a unit of work */
+	applog(LOG_WARNING, "tq_pop thrid==%d", thr->id);
 	work_heap = (struct work *)tq_pop(thr->q, NULL);
 	if(!work_heap)
 		return false;
@@ -1238,6 +1240,7 @@ static bool submit_work(struct thr_info *thr, const struct work *work_in)
 	memcpy(wc->u.work, work_in, sizeof(*work_in));
 
 	/* send solution to workio thread */
+	applog(LOG_WARNING, "tq_push thrid==%d", thr_info[work_thr_id].id);
 	if(!tq_push(thr_info[work_thr_id].q, wc))
 		goto err_out;
 
@@ -1996,6 +1999,7 @@ static void *longpoll_thread(void *userdata)
 	}
 
 start:
+	applog(LOG_WARNING, "tq_pop thrid==%d", mythr->id);
 	hdr_path = (char*)tq_pop(mythr->q, NULL);
 	if(!hdr_path)
 		goto out;
@@ -2126,6 +2130,7 @@ static void *stratum_thread(void *userdata)
 	struct thr_info *mythr = (struct thr_info *)userdata;
 	char *s;
 
+	applog(LOG_WARNING, "tq_pop thrid==%d", mythr->id);
 	stratum.url = (char*)tq_pop(mythr->q, NULL);
 	if(!stratum.url)
 		goto out;
