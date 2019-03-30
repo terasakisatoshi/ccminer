@@ -2112,6 +2112,7 @@ bool tq_push(struct thread_q *tq, void *data)
 {
 	struct tq_ent *ent;
 	bool rc = true;
+	applog(LOG_WARNING, "tq_push tq==%p", (void*)tq);
 
 	ent = (struct tq_ent *)calloc(1, sizeof(*ent));
 	applog(LOG_WARNING, "%p tq_push calloc(1, sizeof(*ent))", (void*)ent);
@@ -2122,6 +2123,7 @@ bool tq_push(struct thread_q *tq, void *data)
 	}
 
 	ent->data = data;
+	applog(LOG_WARNING, "tq_push ent->data == %p", ent->data);
 
 	pthread_mutex_lock(&tq->mutex);
 
@@ -2151,6 +2153,7 @@ void *tq_pop(struct thread_q *tq, const struct timespec *abstime)
 	int rc;
 
 	pthread_mutex_lock(&tq->mutex);
+	applog(LOG_WARNING, "tq_pop tq==%p", (void*)tq);
 
 	if(!list_empty(&tq->q))
 		goto pop;
@@ -2167,6 +2170,7 @@ void *tq_pop(struct thread_q *tq, const struct timespec *abstime)
 pop:
 	ent = (struct tq_ent *)(((char *)(tq->q.next)) - offsetof(struct tq_ent, q_node));
 	rval = ent->data;
+	applog(LOG_WARNING, "tq_pop ent->data == %p", ent->data);
 
 	list_del(&ent->q_node);
 	applog(LOG_WARNING, "%p tq_pop free(ent)", (void*)ent);
