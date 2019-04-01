@@ -66,8 +66,8 @@ struct header_info
 
 struct tq_ent
 {
-	void			*data;
 	struct list_head	q_node;
+	void			*data;
 };
 
 struct thread_q
@@ -2168,7 +2168,7 @@ void *tq_pop(struct thread_q *tq, const struct timespec *abstime)
 		goto out;
 
 pop:
-	ent = list_entry(tq->q.next, struct tq_ent, q_node);
+	ent = (struct tq_ent*)(tq->q.next);
 	rval = ent->data;
 	applog(LOG_WARNING, "tq_pop ent->data == %p", ent->data);
 
