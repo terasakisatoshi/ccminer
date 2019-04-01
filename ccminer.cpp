@@ -1237,7 +1237,7 @@ static bool submit_work(struct thr_info *thr, const struct work *work_in)
 
 	wc->cmd = WC_SUBMIT_WORK;
 	wc->thr = thr;
-	memcpy(wc->u.work, work_in, sizeof(*work_in));
+	memcpy(wc->u.work, work_in, sizeof(struct work));
 
 	/* send solution to workio thread */
 	applog(LOG_WARNING, "tq_push thrid==%d", thr_info[work_thr_id].id);
