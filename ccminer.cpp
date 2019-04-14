@@ -3195,11 +3195,13 @@ int main(int argc, char *argv[])
 #ifdef WIN32
 	timeBeginPeriod(1); // enable high timer precision
 #endif
-
+	int pterr;
 	/* start work I/O thread */
-	if(pthread_create(&thr->pth, NULL, workio_thread, thr))
+	pterr = pthread_create(&thr->pth, NULL, workio_thread, thr);
+	if(pterr)
 	{
 		applog(LOG_ERR, "workio thread create failed");
+		applog(LOG_ERR, "%s", strerror(pterr));
 		return 1;
 	}
 
@@ -3214,9 +3216,11 @@ int main(int argc, char *argv[])
 			return 1;
 
 		/* start longpoll thread */
-		if(unlikely(pthread_create(&thr->pth, NULL, longpoll_thread, thr)))
+		pterr = pthread_create(&thr->pth, NULL, longpoll_thread, thr);
+		if(pterr)
 		{
 			applog(LOG_ERR, "longpoll thread create failed");
+			applog(LOG_ERR, "%s", strerror(pterr));
 			return 1;
 		}
 	}
@@ -3232,9 +3236,11 @@ int main(int argc, char *argv[])
 			return 1;
 
 		/* start stratum thread */
-		if(unlikely(pthread_create(&thr->pth, NULL, stratum_thread, thr)))
+		pterr = pthread_create(&thr->pth, NULL, stratum_thread, thr);
+		if(pterr)
 		{
 			applog(LOG_ERR, "stratum thread create failed");
+			applog(LOG_ERR, "%s", strerror(pterr));
 			return 1;
 		}
 
@@ -3312,13 +3318,15 @@ int main(int argc, char *argv[])
 			return 1;
 
 		/* start stratum thread */
-		if(unlikely(pthread_create(&thr->pth, NULL, api_thread, thr)))
+		pterr = pthread_create(&thr->pth, NULL, api_thread, thr);
+		if(pterr)
 		{
 			applog(LOG_ERR, "api thread create failed");
+			applog(LOG_ERR, "%s", strerror(pterr));
 			return 1;
 		}
 	}
-	int pterr;
+
 	for(i = 0; i < opt_n_threads; i++)
 	{
 		thr = &thr_info[i];
@@ -3344,10 +3352,15 @@ int main(int argc, char *argv[])
 	thr->id = monitor_thr_id;
 	thr->q = tq_new();
 	if(thr->q)
-		if(unlikely(pthread_create(&thr->pth, NULL, monitor_thread, thr)))
+	{
+		pterr = pthread_create(&thr->pth, NULL, monitor_thread, thr);
+		if(pterr)
 		{
 			applog(LOG_ERR, "Monitoring thread %d create failed", i);
+			applog(LOG_ERR, "%s", strerror(pterr));
+			errno = 0;
 		}
+	}
 #endif
 
 	/* start mining threads */
@@ -3363,9 +3376,11 @@ int main(int argc, char *argv[])
 		if(!thr->q)
 			return 1;
 
-		if(unlikely(pthread_create(&thr->pth, NULL, miner_thread, thr)))
+		pterr = pthread_create(&thr->pth, NULL, miner_thread, thr);
+		if(pterr)
 		{
 			applog(LOG_ERR, "thread %d create failed", i);
+			applog(LOG_ERR, "%s", strerror(pterr));
 			proper_exit(EXIT_FAILURE);
 		}
 	}
