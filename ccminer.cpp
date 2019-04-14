@@ -1116,15 +1116,16 @@ static void *workio_thread(void *userdata)
 
 	while(ok && !stop_mining)
 	{
-		struct workio_cmd *wc;
+		struct workio_cmd *wc = nullptr;
+		int rc = 0;
 
+		pthread_mutex_lock(&mythr->wiomutex);
 		/* wait for workio_cmd sent to us, on our queue */
-		wc = (struct workio_cmd *)tq_pop(mythr->q, NULL);
-		if(!wc)
-		{
-			ok = false;
-			break;
-		}
+		if(mythr->qwio.empty())
+			rc = pthread_cond_wait(&mythr->wiocond, &mythr->wiomutex);
+		if(!rc && !mythr->qwio.empty())
+			wc = mythr->qwio.front();
+		pthread_mutex_unlock(&mythr->wiomutex);
 
 		/* process workio_cmd */
 		switch(wc->cmd)
@@ -1152,7 +1153,6 @@ static void *workio_thread(void *userdata)
 static bool get_work(struct thr_info *thr, struct work *work)
 {
 	struct workio_cmd *wc;
-	struct work *work_heap;
 
 	if(opt_benchmark)
 	{
@@ -1193,13 +1193,14 @@ static bool get_work(struct thr_info *thr, struct work *work)
 	wc->thr = thr;
 
 	/* send work request to workio thread */
-	if(!tq_push(thr_info[work_thr_id].q, wc))
-	{
-		workio_cmd_free(wc);
-		return false;
-	}
+
+	pthread_mutex_lock(&thr_info[work_thr_id].wiomutex);
+	thr_info[work_thr_id].qwio.push(wc);
+	pthread_cond_signal(&thr_info[work_thr_id].wiocond);
+	pthread_mutex_unlock(&thr_info[work_thr_id].wiomutex);
 
 	/* wait for response, a unit of work */
+	struct work *work_heap;
 	work_heap = (struct work *)tq_pop(thr->q, NULL);
 	if(!work_heap)
 		return false;
@@ -1233,15 +1234,14 @@ static bool submit_work(struct thr_info *thr, const struct work *work_in)
 	wc->thr = thr;
 	memcpy(wc->work, work_in, sizeof(*work_in));
 
-	/* send solution to workio thread */
-	if(!tq_push(thr_info[work_thr_id].q, wc))
-		goto err_out;
+	pthread_mutex_lock(&thr_info[work_thr_id].wiomutex);
+	thr_info[work_thr_id].qwio.push(wc);
+	if(opt_debug)
+		applog(LOG_DEBUG, "queue size %lld", thr_info[work_thr_id].qwio.size());
+	pthread_cond_signal(&thr_info[work_thr_id].wiocond);
+	pthread_mutex_unlock(&thr_info[work_thr_id].wiomutex);
 
 	return true;
-
-err_out:
-	workio_cmd_free(wc);
-	return false;
 }
 
 static bool stratum_gen_work(struct stratum_ctx *sctx, struct work *work)
@@ -3039,13 +3039,13 @@ int main(int argc, char *argv[])
 	int err = pthread_mutex_init(&stratum.sock_lock, NULL);
 	if(err != 0)
 	{
-		applog(LOG_ERR, "pthread_mutex_init error %d", err);
+		applog(LOG_ERR, "pthread_mutex_init error %s", strerror(err));
 		proper_exit(EXIT_FAILURE);
 	}
 	err = pthread_mutex_init(&stratum.work_lock, NULL);
 	if(err != 0)
 	{
-		applog(LOG_ERR, "pthread_mutex_init error %d", err);
+		applog(LOG_ERR, "pthread_mutex_init error %s", strerror(err));
 		proper_exit(EXIT_FAILURE);
 	}
 
@@ -3175,6 +3175,19 @@ int main(int argc, char *argv[])
 	thr->q = tq_new();
 	if(!thr->q)
 		return 1;
+	queue<struct workio_cmd*>(thr->qwio);
+	err = pthread_mutex_init(&thr->wiomutex, NULL);
+	if(err != 0)
+	{
+		applog(LOG_ERR, "pthread_mutex_init error: %s", strerror(err));
+		proper_exit(EXIT_FAILURE);
+	}
+	err = pthread_cond_init(&thr->wiocond, NULL);
+	if(err != 0)
+	{
+		applog(LOG_ERR, "pthread_cond_init error %s", strerror(err));
+		proper_exit(EXIT_FAILURE);
+	}
 
 	for(i = 0; i < MAX_GPUS; i++)
 		mining_has_stopped[i] = true;
@@ -3313,13 +3326,13 @@ int main(int argc, char *argv[])
 		pterr = pthread_mutex_init(&thr->gpu.monitor.lock, NULL);
 		if(pterr != 0)
 		{
-			applog(LOG_ERR, "pthread_mutex_init error %d", pterr);
+			applog(LOG_ERR, "pthread_mutex_init error %s", strerror(pterr));
 			proper_exit(EXIT_FAILURE);
 		}
 		pterr = pthread_cond_init(&thr->gpu.monitor.sampling_signal, NULL);
 		if(pterr != 0)
 		{
-			applog(LOG_ERR, "pthread_cond_init error %d", pterr);
+			applog(LOG_ERR, "pthread_cond_init error %s", strerror(pterr));
 			proper_exit(EXIT_FAILURE);
 		}
 	}

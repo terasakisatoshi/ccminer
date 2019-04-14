@@ -2055,13 +2055,13 @@ struct thread_q *tq_new(void)
 	int err = pthread_mutex_init(&tq->mutex, NULL);
 	if(err != 0)
 	{
-		applog(LOG_ERR, "pthread_mutex_init error %d", err);
+		applog(LOG_ERR, "pthread_mutex_init error %s", strerror(err));
 		proper_exit(EXIT_FAILURE);
 	}
 	err = pthread_cond_init(&tq->cond, NULL);
 	if(err != 0)
 	{
-		applog(LOG_ERR, "pthread_cond_init error %d", err);
+		applog(LOG_ERR, "pthread_cond_init error %s", strerror(err));
 		proper_exit(EXIT_FAILURE);
 	}
 

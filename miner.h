@@ -13,6 +13,7 @@
 #include <cinttypes>
 #include <cstdlib>
 #include <cstddef>
+#include <queue>
 using namespace std;
 #else
 #include <string.h>
@@ -489,6 +490,11 @@ struct thr_info {
 	int		id;
 	pthread_t	pth;
 	struct thread_q	*q;
+#ifdef __cplusplus
+	queue <struct workio_cmd*> qwio;
+#endif
+	pthread_mutex_t wiomutex;
+	pthread_cond_t wiocond;
 	struct cgpu_info gpu;
 };
 
