@@ -548,7 +548,7 @@ static __device__ __forceinline__ uint32_t WarpShuffle(uint32_t a, uint32_t b, u
 }
 
 __global__ __launch_bounds__(TPB2, BPM2)
-void lyra2v2_gpu_hash_32_1(uint32_t threads, uint32_t startNounce, uint2 *outputHash)
+void lyra2v3_gpu_hash_32_1(uint32_t threads, uint32_t startNounce, uint2 *outputHash)
 {
 	const uint32_t thread = blockIdx.x * TPB2 + threadIdx.x;
 
@@ -599,7 +599,7 @@ void lyra2v2_gpu_hash_32_1(uint32_t threads, uint32_t startNounce, uint2 *output
 }
 
 __global__ __launch_bounds__(TPB, BPM)
-void lyra2v2_gpu_hash_32_2(uint32_t threads, uint32_t startNounce, uint2 *outputHash)
+void lyra2v3_gpu_hash_32_2(uint32_t threads, uint32_t startNounce, uint2 *outputHash)
 {
 	const uint32_t thread = blockIdx.x * TPB + threadIdx.x;
 
@@ -644,28 +644,54 @@ void lyra2v2_gpu_hash_32_2(uint32_t threads, uint32_t startNounce, uint2 *output
 		reduceDuplexRowSetup3(state3, tmp1, state3, 0, 1);
 
 		// reduceDuplex_0
-		rowa = WarpShuffle(state[0].x & 3, 0, 4);
+		uint32_t instance = WarpShuffle(state[0].x & 15, 0, 4);
+		uint32_t buf0, buf1;
+		buf0 = (instance >> 2) < 2 ? state[0].x : state[2].x;
+		buf1 = (instance >> 2) < 2 ? state[1].x : state[3].x;
+		buf0 = ((instance >> 2) & 1) == 0 ? buf0 : buf1;
+		rowa = WarpShuffle(buf0 & 3, instance & 3, 4);
 		reduceDuplexRowt_0(state3, rowa, state0, state0, state1, state2, state3, 0);
 		reduceDuplexRowt_0(state3, rowa, state0, state0, state1, state2, state3, 1);
 		reduceDuplexRowt_1(rowa, 0, 0);
 		reduceDuplexRowt_1(rowa, 0, 1);
 
 		// reduceDuplex_1
-		rowa = WarpShuffle(state[0].x & 3, 0, 4);
+		buf0 = (instance >> 2) < 2 ? state[0].x : state[2].x;
+		buf1 = (instance >> 2) < 2 ? state[1].x : state[3].x;
+		buf0 = ((instance >> 2) & 1) == 0 ? buf0 : buf1;
+		instance = WarpShuffle(buf0 & 15, instance & 3, 4);
+		buf0 = (instance >> 2) < 2 ? state[0].x : state[2].x;
+		buf1 = (instance >> 2) < 2 ? state[1].x : state[3].x;
+		buf0 = ((instance >> 2) & 1) == 0 ? buf0 : buf1;
+		rowa = WarpShuffle(buf0 & 3, instance & 3, 4);
 		reduceDuplexRowt_0(state0, rowa, state1, state0, state1, state2, state3, 0);
 		reduceDuplexRowt_0(state0, rowa, state1, state0, state1, state2, state3, 1);
 		reduceDuplexRowt_1(rowa, 1, 0);
 		reduceDuplexRowt_1(rowa, 1, 1);
 
 		// reduceDuplex_2
-		rowa = WarpShuffle(state[0].x & 3, 0, 4);
+		buf0 = (instance >> 2) < 2 ? state[0].x : state[2].x;
+		buf1 = (instance >> 2) < 2 ? state[1].x : state[3].x;
+		buf0 = ((instance >> 2) & 1) == 0 ? buf0 : buf1;
+		instance = WarpShuffle(buf0 & 15, instance & 3, 4);
+		buf0 = (instance >> 2) < 2 ? state[0].x : state[2].x;
+		buf1 = (instance >> 2) < 2 ? state[1].x : state[3].x;
+		buf0 = ((instance >> 2) & 1) == 0 ? buf0 : buf1;
+		rowa = WarpShuffle(buf0 & 3, instance & 3, 4);
 		reduceDuplexRowt_0(state1, rowa, state2, state0, state1, state2, state3, 0);
 		reduceDuplexRowt_0(state1, rowa, state2, state0, state1, state2, state3, 1);
 		reduceDuplexRowt_1(rowa, 2, 0);
 		reduceDuplexRowt_1(rowa, 2, 1);
 
 		// reduceDuplex_3
-		rowa = WarpShuffle(state[0].x & 3, 0, 4);
+		buf0 = (instance >> 2) < 2 ? state[0].x : state[2].x;
+		buf1 = (instance >> 2) < 2 ? state[1].x : state[3].x;
+		buf0 = ((instance >> 2) & 1) == 0 ? buf0 : buf1;
+		instance = WarpShuffle(buf0 & 15, instance & 3, 4);
+		buf0 = (instance >> 2) < 2 ? state[0].x : state[2].x;
+		buf1 = (instance >> 2) < 2 ? state[1].x : state[3].x;
+		buf0 = ((instance >> 2) & 1) == 0 ? buf0 : buf1;
+		rowa = WarpShuffle(buf0 & 3, instance & 3, 4);
 		reduceDuplexRowt_2(state2, rowa, state0, state1, state2, state3, 0);
 		reduceDuplexRowt_3(state2, rowa, state0, state1, state2, state3, 1);
 		reduceDuplexRowt_4(rowa, 0);
@@ -700,28 +726,54 @@ void lyra2v2_gpu_hash_32_2(uint32_t threads, uint32_t startNounce, uint2 *output
 		reduceDuplexRowSetup2_v30(state1, state2, state3, 3);
 
 		// reduceDuplex_0
-		rowa = WarpShuffle(state[0].x & 3, 0, 4);
+		uint32_t instance = WarpShuffle(state[0].x & 15, 0, 4);
+		uint32_t buf0, buf1;
+		buf0 = (instance >> 2) < 2 ? state[0].x : state[2].x;
+		buf1 = (instance >> 2) < 2 ? state[1].x : state[3].x;
+		buf0 = ((instance >> 2) & 1) == 0 ? buf0 : buf1;
+		rowa = WarpShuffle(buf0 & 3, instance & 3, 4);
 		reduceDuplexRowt_0_v30(state3, state0, 0);
 		reduceDuplexRowt_0_v30(state3, state0, 1);
 		reduceDuplexRowt_0_v30(state3, state0, 2);
 		reduceDuplexRowt_0_v30(state3, state0, 3);
 
 		// reduceDuplex_1
-		rowa = WarpShuffle(state[0].x & 3, 0, 4);
+		buf0 = (instance >> 2) < 2 ? state[0].x : state[2].x;
+		buf1 = (instance >> 2) < 2 ? state[1].x : state[3].x;
+		buf0 = ((instance >> 2) & 1) == 0 ? buf0 : buf1;
+		instance = WarpShuffle(buf0 & 15, instance & 3, 4);
+		buf0 = (instance >> 2) < 2 ? state[0].x : state[2].x;
+		buf1 = (instance >> 2) < 2 ? state[1].x : state[3].x;
+		buf0 = ((instance >> 2) & 1) == 0 ? buf0 : buf1;
+		rowa = WarpShuffle(buf0 & 3, instance & 3, 4);
 		reduceDuplexRowt_0_v30(state0, state1, 0);
 		reduceDuplexRowt_0_v30(state0, state1, 1);
 		reduceDuplexRowt_0_v30(state0, state1, 2);
 		reduceDuplexRowt_0_v30(state0, state1, 3);
 
 		// reduceDuplex_2
-		rowa = WarpShuffle(state[0].x & 3, 0, 4);
+		buf0 = (instance >> 2) < 2 ? state[0].x : state[2].x;
+		buf1 = (instance >> 2) < 2 ? state[1].x : state[3].x;
+		buf0 = ((instance >> 2) & 1) == 0 ? buf0 : buf1;
+		instance = WarpShuffle(buf0 & 15, instance & 3, 4);
+		buf0 = (instance >> 2) < 2 ? state[0].x : state[2].x;
+		buf1 = (instance >> 2) < 2 ? state[1].x : state[3].x;
+		buf0 = ((instance >> 2) & 1) == 0 ? buf0 : buf1;
+		rowa = WarpShuffle(buf0 & 3, instance & 3, 4);
 		reduceDuplexRowt_0_v30(state1, state2, 0);
 		reduceDuplexRowt_0_v30(state1, state2, 1);
 		reduceDuplexRowt_0_v30(state1, state2, 2);
 		reduceDuplexRowt_0_v30(state1, state2, 3);
 
 		// reduceDuplex_3
-		rowa = WarpShuffle(state[0].x & 3, 0, 4);
+		buf0 = (instance >> 2) < 2 ? state[0].x : state[2].x;
+		buf1 = (instance >> 2) < 2 ? state[1].x : state[3].x;
+		buf0 = ((instance >> 2) & 1) == 0 ? buf0 : buf1;
+		instance = WarpShuffle(buf0 & 15, instance & 3, 4);
+		buf0 = (instance >> 2) < 2 ? state[0].x : state[2].x;
+		buf1 = (instance >> 2) < 2 ? state[1].x : state[3].x;
+		buf0 = ((instance >> 2) & 1) == 0 ? buf0 : buf1;
+		rowa = WarpShuffle(buf0 & 3, instance & 3, 4);
 		reduceDuplexRowt_1_v30(state2, 0);
 		reduceDuplexRowt_2_v30(state2, 1);
 		reduceDuplexRowt_2_v30(state2, 2);
@@ -757,28 +809,54 @@ void lyra2v2_gpu_hash_32_2(uint32_t threads, uint32_t startNounce, uint2 *output
 		reduceDuplexRowSetup2_v60(state1, state3, 3, 0, state2, tmp0, 3, 0, state3, tmp0, 0, 0, 1, 3);
 
 		// reduceDuplex_0
-		rowa = WarpShuffle(state[0].x & 3, 0, 4);
+		uint32_t instance = WarpShuffle(state[0].x & 15, 0, 4);
+		uint32_t buf0, buf1;
+		buf0 = (instance >> 2) < 2 ? state[0].x : state[2].x;
+		buf1 = (instance >> 2) < 2 ? state[1].x : state[3].x;
+		buf0 = ((instance >> 2) & 1) == 0 ? buf0 : buf1;
+		rowa = WarpShuffle(buf0 & 3, instance & 3, 4);
 		reduceDuplexRowt_0_v60(state3, tmp0, state0, 0, rowa, 0);
 		reduceDuplexRowt_0_v60(state3, tmp0, state0, 1, rowa, 0);
 		reduceDuplexRowt_0_v60(state3, tmp0, state0, 2, rowa, 0);
 		reduceDuplexRowt_0_v60(state3, tmp0, state0, 3, rowa, 0);
 
 		// reduceDuplex_1
-		rowa = WarpShuffle(state[0].x & 3, 0, 4);
+		buf0 = (instance >> 2) < 2 ? state[0].x : state[2].x;
+		buf1 = (instance >> 2) < 2 ? state[1].x : state[3].x;
+		buf0 = ((instance >> 2) & 1) == 0 ? buf0 : buf1;
+		instance = WarpShuffle(buf0 & 15, instance & 3, 4);
+		buf0 = (instance >> 2) < 2 ? state[0].x : state[2].x;
+		buf1 = (instance >> 2) < 2 ? state[1].x : state[3].x;
+		buf0 = ((instance >> 2) & 1) == 0 ? buf0 : buf1;
+		rowa = WarpShuffle(buf0 & 3, instance & 3, 4);
 		reduceDuplexRowt_0_v60(state0, tmp0, state1, 0, rowa, 1);
 		reduceDuplexRowt_0_v60(state0, tmp0, state1, 1, rowa, 1);
 		reduceDuplexRowt_0_v60(state0, tmp0, state1, 2, rowa, 1);
 		reduceDuplexRowt_0_v60(state0, tmp0, state1, 3, rowa, 1);
 
 		// reduceDuplex_2
-		rowa = WarpShuffle(state[0].x & 3, 0, 4);
+		buf0 = (instance >> 2) < 2 ? state[0].x : state[2].x;
+		buf1 = (instance >> 2) < 2 ? state[1].x : state[3].x;
+		buf0 = ((instance >> 2) & 1) == 0 ? buf0 : buf1;
+		instance = WarpShuffle(buf0 & 15, instance & 3, 4);
+		buf0 = (instance >> 2) < 2 ? state[0].x : state[2].x;
+		buf1 = (instance >> 2) < 2 ? state[1].x : state[3].x;
+		buf0 = ((instance >> 2) & 1) == 0 ? buf0 : buf1;
+		rowa = WarpShuffle(buf0 & 3, instance & 3, 4);
 		reduceDuplexRowt_0_v60(state1, tmp0, state2, 0, rowa, 2);
 		reduceDuplexRowt_0_v60(state1, tmp0, state2, 1, rowa, 2);
 		reduceDuplexRowt_0_v60(state1, tmp0, state2, 2, rowa, 2);
 		reduceDuplexRowt_0_v60(state1, tmp0, state2, 3, rowa, 2);
 
 		// reduceDuplex_3
-		rowa = WarpShuffle(state[0].x & 3, 0, 4);
+		buf0 = (instance >> 2) < 2 ? state[0].x : state[2].x;
+		buf1 = (instance >> 2) < 2 ? state[1].x : state[3].x;
+		buf0 = ((instance >> 2) & 1) == 0 ? buf0 : buf1;
+		instance = WarpShuffle(buf0 & 15, instance & 3, 4);
+		buf0 = (instance >> 2) < 2 ? state[0].x : state[2].x;
+		buf1 = (instance >> 2) < 2 ? state[1].x : state[3].x;
+		buf0 = ((instance >> 2) & 1) == 0 ? buf0 : buf1;
+		rowa = WarpShuffle(buf0 & 3, instance & 3, 4);
 		reduceDuplexRowt_1_v60(state2, tmp0, 0, rowa);
 		reduceDuplexRowt_2_v60(state2, tmp0, 1, rowa);
 		reduceDuplexRowt_2_v60(state2, tmp0, 2, rowa);
@@ -798,7 +876,7 @@ void lyra2v2_gpu_hash_32_2(uint32_t threads, uint32_t startNounce, uint2 *output
 }
 
 __global__ __launch_bounds__(TPB2, BPM2)
-void lyra2v2_gpu_hash_32_3(uint32_t threads, uint32_t startNounce, uint2 *outputHash)
+void lyra2v3_gpu_hash_32_3(uint32_t threads, uint32_t startNounce, uint2 *outputHash)
 {
 	const uint32_t thread = blockIdx.x * TPB2 + threadIdx.x;
 
@@ -821,7 +899,7 @@ void lyra2v2_gpu_hash_32_3(uint32_t threads, uint32_t startNounce, uint2 *output
 }
 
 __host__
-void lyra2v2_cpu_init(int thr_id, uint64_t *d_matrix)
+void lyra2v3_cpu_init(int thr_id, uint64_t *d_matrix)
 {
 	int dev_id = device_map[thr_id % MAX_GPUS];
 	// just assign the device pointer allocated in main loop
@@ -829,7 +907,7 @@ void lyra2v2_cpu_init(int thr_id, uint64_t *d_matrix)
 }
 
 __host__
-void lyra2v2_cpu_hash_32(int thr_id, uint32_t threads, uint32_t startNounce, uint64_t *g_hash)
+void lyra2v3_cpu_hash_32(int thr_id, uint32_t threads, uint32_t startNounce, uint64_t *g_hash)
 {
 	int dev_id = device_map[thr_id % MAX_GPUS];
 
@@ -853,16 +931,16 @@ void lyra2v2_cpu_hash_32(int thr_id, uint32_t threads, uint32_t startNounce, uin
 
 #if defined(CUDART_VERSION) && CUDART_VERSION >= 9000
 	if (device_sm[dev_id] == 700)
-		cudaFuncSetAttribute(lyra2v2_gpu_hash_32_2, cudaFuncAttributePreferredSharedMemoryCarveout, 100);
+		cudaFuncSetAttribute(lyra2v3_gpu_hash_32_2, cudaFuncAttributePreferredSharedMemoryCarveout, 100);
 #endif
 
-	lyra2v2_gpu_hash_32_1 << <grid2, block2, 0, gpustream[thr_id] >> > (threads, startNounce, (uint2*)g_hash);
+	lyra2v3_gpu_hash_32_1 << <grid2, block2, 0, gpustream[thr_id] >> > (threads, startNounce, (uint2*)g_hash);
 	CUDA_SAFE_CALL(cudaGetLastError());
 
-	lyra2v2_gpu_hash_32_2 << <grid1, block1, sm, gpustream[thr_id] >> > (threads, startNounce, (uint2*)g_hash);
+	lyra2v3_gpu_hash_32_2 << <grid1, block1, sm, gpustream[thr_id] >> > (threads, startNounce, (uint2*)g_hash);
 	CUDA_SAFE_CALL(cudaGetLastError());
 
-	lyra2v2_gpu_hash_32_3 << <grid2, block2, 0, gpustream[thr_id] >> > (threads, startNounce, (uint2*)g_hash);
+	lyra2v3_gpu_hash_32_3 << <grid2, block2, 0, gpustream[thr_id] >> > (threads, startNounce, (uint2*)g_hash);
 	CUDA_SAFE_CALL(cudaGetLastError());
 
 	//MyStreamSynchronize(NULL, order, thr_id);

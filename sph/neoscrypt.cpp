@@ -291,7 +291,7 @@ static void neoscrypt_pbkdf2_sha256(const uint8_t *password, size_t password_len
             for(k = 0; k < sizeof(u); k++)
               ti[k] ^= u[k];
         }
-
+		
         memcpy(output, ti, (output_len > SCRYPT_HASH_DIGEST_SIZE) ? SCRYPT_HASH_DIGEST_SIZE : output_len);
         output += SCRYPT_HASH_DIGEST_SIZE;
         output_len -= SCRYPT_HASH_DIGEST_SIZE;
@@ -736,7 +736,7 @@ static void neoscrypt_fastkdf(const uchar *password, uint password_len, const uc
 
     /* The primary iteration */
     for(i = 0, bufptr = 0; i < N; i++) {
-
+		
         /* Map the PRF input buffer */
         prf_input = &A[bufptr];
 

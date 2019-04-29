@@ -146,7 +146,7 @@ void applog(int prio, const char *fmt, ...)
 		{
 		case LOG_ERR:     color = CL_RED; break;
 		case LOG_WARNING: color = CL_YLW; break;
-		case LOG_NOTICE:  color = CL_WHT; break;
+		case LOG_NOTICE:  color = CL_LGR; break;
 		case LOG_INFO:    color = ""; break;
 		case LOG_DEBUG:   color = CL_GRY; break;
 
@@ -622,8 +622,12 @@ json_t *json_rpc_call(CURL *curl, const char *url,
 	res_val = json_object_get(val, "result");
 	err_val = json_object_get(val, "error");
 
+#ifdef ORG
 	if(!res_val || json_is_null(res_val) ||
-	   (err_val && !json_is_null(err_val)))
+#else
+	if (!res_val ||
+#endif
+		(err_val && !json_is_null(err_val)))
 	{
 		char *s = NULL;
 
@@ -1522,7 +1526,7 @@ static uint32_t getblocheight(struct stratum_ctx *sctx)
 
 static bool stratum_notify(struct stratum_ctx *sctx, json_t *params)
 {
-	const char *job_id, *prevhash, *coinb1, *coinb2, *version, *nbits, *nreward;
+	const char *job_id, *prevhash, *coinb1, *coinb2, *version, *nbits, *nreward, *finalsaplinghash;
 	char *stime;
 	size_t coinb1_size, coinb2_size;
 	bool clean, ret = false;
@@ -1530,6 +1534,7 @@ static bool stratum_notify(struct stratum_ctx *sctx, json_t *params)
 	json_t *merkle_arr;
 	uchar **merkle = NULL;
 	int32_t ntime;
+	int ver;
 
 	job_id = json_string_value(json_array_get(params, 0));
 	prevhash = json_string_value(json_array_get(params, 1));
@@ -1570,6 +1575,16 @@ static bool stratum_notify(struct stratum_ctx *sctx, json_t *params)
 			goto out;
 		}
 	}
+
+	hex2bin(sctx->job.version, version, 4);
+	ver = be32dec(sctx->job.version); 
+	if (opt_algo==ALGO_YESCRYPT && ver == 5) { 
+		finalsaplinghash = json_string_value(json_array_get(params, 9)); 
+		if (!finalsaplinghash || strlen(finalsaplinghash) != 64) { 
+		  applog(LOG_ERR, "Stratum notify: invalid parameters"); 
+			goto out; 
+		} 
+	} 
 
 	/* store stratum server time diff */
 	hex2bin((uchar *)&ntime, stime, 4);
@@ -1639,6 +1654,9 @@ static bool stratum_notify(struct stratum_ctx *sctx, json_t *params)
 	free(sctx->job.job_id);
 	sctx->job.job_id = strdup(job_id);
 	hex2bin(sctx->job.prevhash, prevhash, 32);
+	if (opt_algo==ALGO_YESCRYPT && ver == 5) { 
+		hex2bin(sctx->job.finalsaplinghash, finalsaplinghash, 32);
+	}
 
 	if(opt_algo != ALGO_SIA)
 		sctx->job.height = getblocheight(sctx);
@@ -1655,7 +1673,6 @@ static bool stratum_notify(struct stratum_ctx *sctx, json_t *params)
 	sctx->job.merkle = merkle;
 	sctx->job.merkle_count = merkle_count;
 
-	hex2bin(sctx->job.version, version, 4);
 	hex2bin(sctx->job.nbits, nbits, 4);
 	hex2bin(sctx->job.ntime, stime, 4);
 	if(nreward != NULL)

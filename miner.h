@@ -327,6 +327,10 @@ extern int scanhash_lyra2v2(int thr_id, uint32_t *pdata,
 	const uint32_t *ptarget, uint32_t max_nonce,
 	uint32_t *hashes_done);
 
+extern int scanhash_lyra2v3(int thr_id, uint32_t *pdata,
+	const uint32_t *ptarget, uint32_t max_nonce,
+	uint32_t *hashes_done);
+
 extern int scanhash_nist5(int thr_id, uint32_t *pdata,
 	uint32_t *ptarget, uint32_t max_nonce,
 	uint32_t *hashes_done);
@@ -376,6 +380,44 @@ extern int scanhash_x17(int thr_id, uint32_t *pdata,
 	uint32_t *ptarget, uint32_t max_nonce,
 	uint32_t *hashes_done);
 
+#ifndef ORG
+extern int scanhash_yescrypt(int thr_id, uint32_t *pdata,
+	uint32_t *ptarget, uint32_t max_nonce,
+	uint32_t *hashes_done, int perslen);
+
+extern int scanhash_yescryptr8(int thr_id, uint32_t *pdata,
+	uint32_t *ptarget, uint32_t max_nonce,
+	uint32_t *hashes_done);
+
+extern int scanhash_yescryptr16(int thr_id, uint32_t *pdata,
+	uint32_t *ptarget, uint32_t max_nonce,
+	uint32_t *hashes_done);
+
+extern int scanhash_yescryptr16v2(int thr_id, uint32_t *pdata,
+	uint32_t *ptarget, uint32_t max_nonce,
+	uint32_t *hashes_done);
+
+extern int scanhash_yescryptr24(int thr_id, uint32_t *pdata,
+	uint32_t *ptarget, uint32_t max_nonce,
+	uint32_t *hashes_done);
+
+extern int scanhash_yescryptr32(int thr_id, uint32_t *pdata,
+	uint32_t *ptarget, uint32_t max_nonce,
+	uint32_t *hashes_done);
+
+extern int scanhash_lyra2z330(int thr_id, uint32_t *pdata,
+	uint32_t *ptarget, uint32_t max_nonce,
+	uint32_t *hashes_done);
+
+extern int scanhash_lyra2re(int thr_id, uint32_t *pdata,
+	uint32_t *ptarget, uint32_t max_nonce,
+	uint32_t *hashes_done);
+
+extern int scanhash_lyra2z(int thr_id, uint32_t *pdata,
+	uint32_t *ptarget, uint32_t max_nonce,
+	uint32_t *hashes_done);
+
+#endif
 extern int scanhash_bitcoin(int thr_id, uint32_t *pdata,
 	uint32_t *ptarget, uint32_t max_nonce,
 	uint32_t *hashes_done);
@@ -486,6 +528,9 @@ extern int cuda_num_devices();
 extern int cuda_version();
 extern int cuda_gpu_clocks(struct cgpu_info *gpu);
 int cuda_gpu_info(struct cgpu_info *gpu);
+#ifndef ORG
+extern bool opt_eco_mode;
+#endif
 extern bool opt_verify;
 extern bool opt_benchmark;
 extern bool opt_debug;
@@ -571,6 +616,7 @@ uint32_t device_intensity(int thr_id, const char *func, uint32_t defcount);
 struct stratum_job {
 	char *job_id;
 	unsigned char prevhash[32];
+	unsigned char finalsaplinghash[32];
 	size_t coinbase_size;
 	unsigned char *coinbase;
 	unsigned char *xnonce2;
@@ -632,6 +678,11 @@ struct work {
 
 	uint32_t scanned_from;
 	uint32_t scanned_to;
+#ifndef ORG
+	char *txs2;
+	char *workid;
+#endif
+	bool sapling;
 };
 
 enum sha_algos
@@ -651,6 +702,7 @@ enum sha_algos
 	ALGO_JACKPOT,
 	ALGO_LUFFA_DOOM,
 	ALGO_LYRA2v2,
+	ALGO_LYRA2v3,
 	ALGO_MYR_GR,
 	ALGO_NIST5,
 	ALGO_PENTABLAKE,
@@ -666,6 +718,18 @@ enum sha_algos
 	ALGO_X14,
 	ALGO_X15,
 	ALGO_X17,
+#ifndef ORG
+	ALGO_LYRA2RE,
+	ALGO_LYRA2Z,
+	ALGO_LYRA2Z330,
+	ALGO_YESCRYPT,
+	ALGO_YESCRYPTR8,
+	ALGO_YESCRYPTR16,
+	ALGO_YESCRYPTR16V2,
+	ALGO_YESCRYPTR24,
+	ALGO_YESCRYPTR32,
+#endif
+
 	ALGO_VANILLA,
 	ALGO_NEO
 };
@@ -726,6 +790,8 @@ void fugue256_hash(unsigned char* output, const unsigned char* input, int len);
 void keccak256_hash(void *state, const void *input);
 unsigned int jackpothash(void *state, const void *input);
 void groestlhash(void *state, const void *input);
+void lyra2v2_hash(void *state, const void *input);
+void lyra2v3_hash(void *state, const void *input);
 void myriadhash(void *state, const void *input);
 void nist5hash(void *state, const void *input);
 void pentablakehash(void *output, const void *input);
@@ -739,5 +805,15 @@ void x13hash(void *output, const void *input);
 void x14hash(void *output, const void *input);
 void x15hash(void *output, const void *input);
 void x17hash(void *output, const void *input);
+#ifndef ORG
+void yescrypt_hash(void *output, const void *input);
+void yescryptr8_hash(void *output, const void *input);
+void yescryptr16_hash(void *output, const void *input);
+void yescryptr16v2_hash(void *output, const void *input);
+void yescryptr24_hash(void *output, const void *input);
+void yescryptr32_hash(void *output, const void *input);
+void lyra2z_hash(void *state, const void *input);
+void lyra2z330_hash(void *state, const void *input);
+#endif
 
 #endif /* __MINER_H__ */

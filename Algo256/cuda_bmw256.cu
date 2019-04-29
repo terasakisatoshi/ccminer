@@ -3,6 +3,39 @@
 
 #include "cuda_helper.h"
 
+// Max TPB 1024 (Fermi or later)
+#define TPB60 64
+#define TPB52 128
+#define TPB50 128
+#define TPB30 192
+#define TPB20 96
+
+// Max BPM 32 (Maxwell or later)
+// Max BPM 16 (Kepler)
+// Max BPM 8 (Fermi or older)
+#define BPM60 16
+#define BPM52 8
+#define BPM50 8
+#define BPM30 3
+#define BPM20 6
+
+#if __CUDA_ARCH__ == 600
+#define TPB TPB60
+#define BPM BPM60
+#elif __CUDA_ARCH__ >= 520
+#define TPB TPB52
+#define BPM BPM52
+#elif __CUDA_ARCH__ >= 500
+#define TPB TPB50
+#define BPM BPM50
+#elif __CUDA_ARCH__ >= 300
+#define TPB TPB30
+#define BPM BPM30
+#else
+#define TPB TPB20
+#define BPM BPM20
+#endif
+
 static uint32_t *h_nonce[MAX_GPUS];
 static uint32_t *d_nonce[MAX_GPUS];
 
@@ -50,8 +83,7 @@ static __forceinline__ __device__ uint32_t expand32_2(const int i, const uint32_
 		+rs5(Q[i - 7]) + rs6(Q[i - 5]) + rs7(Q[i - 3]) + ss4(Q[i - 2]) + ss5(Q[i - 1]));
 }
 
-#define TPB 512
-__global__	__launch_bounds__(TPB, 2)
+__global__	__launch_bounds__(TPB, BPM)
 void bmw256_gpu_hash_32(uint32_t threads, uint32_t startNounce, uint2 *g_hash, uint32_t *const __restrict__ nonceVector, uint32_t Target)
 {
 	const uint32_t thread = (blockDim.x * blockIdx.x + threadIdx.x);
@@ -300,9 +332,21 @@ void bmw256_cpu_hash_32(int thr_id, uint32_t threads, uint32_t startNounce, uint
 {
 	CUDA_SAFE_CALL(cudaMemsetAsync(d_nonce[thr_id], 0x0, 2 * sizeof(uint32_t), gpustream[thr_id]));
 
+	int dev_id = device_map[thr_id % MAX_GPUS];
+
+	uint32_t tpb;
+
+	if (cuda_arch[dev_id] >= 750) tpb = TPB60;
+	else if (cuda_arch[dev_id] >= 610) tpb = TPB52;
+	else if (cuda_arch[dev_id] >= 600) tpb = TPB60;
+	else if (cuda_arch[dev_id] >= 520) tpb = TPB52;
+	else if (cuda_arch[dev_id] >= 500) tpb = TPB50;
+	else if (cuda_arch[dev_id] >= 300) tpb = TPB30;
+	else tpb = TPB20;
+
 	// berechne wie viele Thread Blocks wir brauchen
-	dim3 grid((threads + TPB - 1) / TPB);
-	dim3 block(TPB);
+	dim3 grid((threads + tpb - 1) / tpb);
+	dim3 block(tpb);
 
 	bmw256_gpu_hash_32 << <grid, block >> >(threads, startNounce, (uint2 *)g_hash, d_nonce[thr_id], Target);
 	CUDA_SAFE_CALL(cudaGetLastError());

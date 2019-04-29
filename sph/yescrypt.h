@@ -27,22 +27,19 @@
  * This file was originally written by Colin Percival as part of the Tarsnap
  * online backup system.
  */
-#ifndef _YESCRYPT_H_
-#define _YESCRYPT_H_
+
+#ifndef YESCRYPT_H
+#define YESCRYPT_H
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #include <stdint.h>
 #include <stdlib.h> /* for size_t */
-#include <errno.h>
+#include <stdbool.h>
 
-//#ifdef __cplusplus
-//extern "C" {
-//#endif
-
-
-//extern void yescrypt_hash_sp(const unsigned char *input, unsigned char *output);
-extern void yescrypt_hash(const unsigned char *input, unsigned char *output);
-
-
+//	void yescrypt_hash(void *state, const void *input);
 
 /**
  * crypto_scrypt(passwd, passwdlen, salt, saltlen, N, r, p, buf, buflen):
@@ -56,9 +53,9 @@ extern void yescrypt_hash(const unsigned char *input, unsigned char *output);
  * MT-safe as long as buf is local to the thread.
  */
 extern int crypto_scrypt(const uint8_t * __passwd, size_t __passwdlen,
-	const uint8_t * __salt, size_t __saltlen,
-	uint64_t __N, uint32_t __r, uint32_t __p,
-	uint8_t * __buf, size_t __buflen);
+    const uint8_t * __salt, size_t __saltlen,
+    uint64_t __N, uint32_t __r, uint32_t __p,
+    uint8_t * __buf, size_t __buflen);
 
 /**
  * Internal type used by the memory allocator.  Please do not use it directly.
@@ -106,6 +103,9 @@ typedef enum {
 	__YESCRYPT_INIT_SHARED_2 = 0x20000,
 	__YESCRYPT_INIT_SHARED = 0x30000
 } yescrypt_flags_t;
+
+extern char *client_key;    // NULL for GlobalBoost-Y
+extern size_t client_key_len;
 
 #define YESCRYPT_KNOWN_FLAGS \
 	(YESCRYPT_RW | YESCRYPT_PARALLEL_SMIX | YESCRYPT_PWXFORM | \
@@ -157,10 +157,10 @@ typedef enum {
  * MT-safe as long as shared is local to the thread.
  */
 extern int yescrypt_init_shared(yescrypt_shared_t * __shared,
-	const uint8_t * __param, size_t __paramlen,
-	uint64_t __N, uint32_t __r, uint32_t __p,
-	yescrypt_init_shared_flags_t __flags, uint32_t __mask,
-	uint8_t * __buf, size_t __buflen);
+    const uint8_t * __param, size_t __paramlen,
+    uint64_t __N, uint32_t __r, uint32_t __p,
+    yescrypt_init_shared_flags_t __flags, uint32_t __mask,
+    uint8_t * __buf, size_t __buflen);
 
 /**
  * yescrypt_free_shared(shared):
@@ -291,12 +291,12 @@ extern int yescrypt_free_local(yescrypt_local_t * __local);
  * MT-safe as long as local and buf are local to the thread.
  */
 extern int yescrypt_kdf(const yescrypt_shared_t * __shared,
-	yescrypt_local_t * __local,
-	const uint8_t * __passwd, size_t __passwdlen,
-	const uint8_t * __salt, size_t __saltlen,
-	uint64_t __N, uint32_t __r, uint32_t __p, uint32_t __t,
-	yescrypt_flags_t __flags,
-	uint8_t * __buf, size_t __buflen);
+    yescrypt_local_t * __local,
+    const uint8_t * __passwd, size_t __passwdlen,
+    const uint8_t * __salt, size_t __saltlen,
+    uint64_t __N, uint32_t __r, uint32_t __p, uint32_t __t,
+    yescrypt_flags_t __flags,
+    uint8_t * __buf, size_t __buflen);
 
 /**
  * yescrypt_r(shared, local, passwd, passwdlen, setting, buf, buflen):
@@ -313,10 +313,10 @@ extern int yescrypt_kdf(const yescrypt_shared_t * __shared,
  * MT-safe as long as local and buf are local to the thread.
  */
 extern uint8_t * yescrypt_r(const yescrypt_shared_t * __shared,
-	yescrypt_local_t * __local,
-	const uint8_t * __passwd, size_t __passwdlen,
-	const uint8_t * __setting,
-	uint8_t * __buf, size_t __buflen);
+    yescrypt_local_t * __local,
+    const uint8_t * __passwd, size_t __passwdlen,
+    const uint8_t * __setting,
+    uint8_t * __buf, size_t __buflen);
 
 /**
  * yescrypt(passwd, setting):
@@ -349,10 +349,10 @@ extern uint8_t * yescrypt(const uint8_t * __passwd, const uint8_t * __setting);
  * MT-safe as long as buf is local to the thread.
  */
 extern uint8_t * yescrypt_gensalt_r(
-	uint32_t __N_log2, uint32_t __r, uint32_t __p,
-	yescrypt_flags_t __flags,
-	const uint8_t * __src, size_t __srclen,
-	uint8_t * __buf, size_t __buflen);
+    uint32_t __N_log2, uint32_t __r, uint32_t __p,
+    yescrypt_flags_t __flags,
+    const uint8_t * __src, size_t __srclen,
+    uint8_t * __buf, size_t __buflen);
 
 /**
  * yescrypt_gensalt(N_log2, r, p, flags, src, srclen):
@@ -365,12 +365,16 @@ extern uint8_t * yescrypt_gensalt_r(
  * MT-unsafe.
  */
 extern uint8_t * yescrypt_gensalt(
-	uint32_t __N_log2, uint32_t __r, uint32_t __p,
-	yescrypt_flags_t __flags,
-	const uint8_t * __src, size_t __srclen);
+    uint32_t __N_log2, uint32_t __r, uint32_t __p,
+    yescrypt_flags_t __flags,
+    const uint8_t * __src, size_t __srclen);
 
-//#ifdef __cplusplus
-//}
-//#endif
+extern int yescrypt_bsty(const uint8_t * passwd, size_t passwdlen,
+	const uint8_t * salt, size_t saltlen, uint64_t N, uint32_t r, uint32_t p,
+	uint8_t * buf, size_t buflen);
 
-#endif /* !_YESCRYPT_H_ */
+#ifdef __cplusplus
+}
+#endif
+
+#endif

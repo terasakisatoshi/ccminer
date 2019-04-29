@@ -21,6 +21,7 @@ using namespace std;
 
 uint32_t __byte_perm(uint32_t x, uint32_t y, uint32_t z);
 uint32_t __shfl_sync(uint32_t w, uint32_t x, uint32_t y, uint32_t z);
+uint32_t __shfl_up_sync(uint32_t w, uint32_t x, uint32_t y, uint32_t z);
 uint32_t atomicExch(uint32_t *x, uint32_t y);
 uint32_t atomicAdd(uint32_t *x, uint32_t y);
 void __syncthreads(void);
@@ -55,6 +56,50 @@ extern const uint3 threadIdx;
 
 extern cudaError_t MyStreamSynchronize(cudaStream_t stream, int situation, int thr_id);
 
+// Beginning of GPU Architecture definitions
+inline int _ConvertSMVer2Cores(int major, int minor) {
+	// Defines for GPU Architecture types (using the SM version to determine
+	// the # of cores per SM
+	typedef struct {
+		int SM;  // 0xMm (hexidecimal notation), M = SM Major version,
+				 // and m = SM minor version
+		int Cores;
+	} sSMtoCores;
+
+	sSMtoCores nGpuArchCoresPerSM[] = {
+		{ 0x30, 192 },
+		{ 0x32, 192 },
+		{ 0x35, 192 },
+		{ 0x37, 192 },
+		{ 0x50, 128 },
+		{ 0x52, 128 },
+		{ 0x53, 128 },
+		{ 0x60,  64 },
+		{ 0x61, 128 },
+		{ 0x62, 128 },
+		{ 0x70,  64 },
+		{ 0x72,  64 },
+		{ 0x75,  64 },
+		{ -1, -1 } };
+
+	int index = 0;
+
+	while (nGpuArchCoresPerSM[index].SM != -1) {
+		if (nGpuArchCoresPerSM[index].SM == ((major << 4) + minor)) {
+			return nGpuArchCoresPerSM[index].Cores;
+		}
+
+		index++;
+	}
+
+	// If we don't find the values, we default use the previous one
+	// to run properly
+/*	printf(
+		"MapSMtoCores for SM %d.%d is undefined."
+		"  Default to use %d Cores/SM\n",
+		major, minor, nGpuArchCoresPerSM[index - 1].Cores);*/
+	return nGpuArchCoresPerSM[index - 1].Cores;
+}
 
 #ifndef SPH_C32
 #define SPH_C32(x) ((x ## U))
@@ -75,6 +120,30 @@ extern cudaError_t MyStreamSynchronize(cudaStream_t stream, int situation, int t
 #define SPH_T64(x) (x)
 // #define SPH_T64(x) ((x) & SPH_C64(0xFFFFFFFFFFFFFFFF))
 #endif
+
+static __device__ __forceinline__ int SHFL(int var, int src, int width = 32)
+{
+#if defined __CUDA_ARCH__ && __CUDA_ARCH__ >= 300
+#if CUDART_VERSION >= 9010
+	return __shfl_sync(0xffffffff, var, src, width);
+#else
+	return __shfl(var, src, width);
+#endif
+#else
+#endif
+}
+
+static __device__ __forceinline__ int SHFL_UP(int var, int src, int width = 32)
+{
+#if defined __CUDA_ARCH__ && __CUDA_ARCH__ >= 300
+#if CUDART_VERSION >= 9010
+	return __shfl_up_sync(0xffffffff, var, src, width);
+#else
+	return __shfl_up(var, src, width);
+#endif
+#else
+#endif
+}
 
 #if defined _MSC_VER && !defined __CUDA_ARCH__
 #define ROTL32c(x, n) _rotl(x, n)

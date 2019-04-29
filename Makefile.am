@@ -30,6 +30,9 @@ ccminer_SOURCES = elist.h miner.h compat.h \
 			  myriadgroestl.cpp cuda_myriadgroestl.cu \
 			  lyra2/Lyra2.c lyra2/Sponge.c \
 			  lyra2/lyra2REv2.cu lyra2/cuda_lyra2v2.cu \
+			  lyra2/lyra2REv3.cu lyra2/cuda_lyra2v3.cu \
+			  lyra2/lyra2RE.cu lyra2/lyra2Z.cu \
+			  lyra2/lyra2Z330.cu lyra2/cuda_lyra2.cu \
 			  Algo256/cuda_blake256.cu Algo256/cuda_groestl256.cu Algo256/cuda_keccak256.cu Algo256/cuda_skein256.cu \
 			  Algo256/cuda_bmw256.cu Algo256/cuda_cubehash256.cu \
 			  Algo256/blake256.cu Algo256/keccak256.cu \
@@ -57,9 +60,9 @@ ccminer_SOURCES = elist.h miner.h compat.h \
 			  x11/s3.cu x11/c11.cu \
 			  bitcoin.cu cuda_bitcoin.cu \
 			  x15/cuda_whirlpoolx.cu x15/whirlpoolx.cu \
-			  neoscrypt/neoscrypt.cu neoscrypt/cuda_neoscrypt.cu \
-			  neoscrypt/cuda_neoscrypt_tpruvot.cu \
-			  neoscrypt/cuda_vector_tpruvot.cuh neoscrypt/cuda_vector_uint2x4.cuh
+			  yescrypt/yescrypt.cu yescrypt/cuda_yescrypt.cu \
+			  sph/yescrypt.h sph/yescrypt-platform.h sph/yescrypt-opt.c sph/yescrypt-common.c \
+			  neoscrypt/neoscrypt.cu neoscrypt/cuda_neoscrypt.cu
 
 # scrypt
 # ccminer_SOURCES += scrypt.cpp scrypt-jane.cpp \
@@ -136,9 +139,3 @@ JHA/cuda_jha_compactionTest.o: JHA/cuda_jha_compactionTest.cu
 
 skein.o: skein.cu
 	$(NVCC) $(nvcc_FLAGS) --maxrregcount=64 -o $@ -c $<
-
-neoscrypt/cuda_neoscrypt.o: neoscrypt/cuda_neoscrypt.cu
-	$(NVCC) -gencode=arch=compute_61,code=sm_61 -gencode=arch=compute_60,code=sm_60 -gencode=arch=compute_52,code=sm_52 -gencode=arch=compute_50,code=sm_50 -gencode=arch=compute_35,code=sm_35 -gencode=arch=compute_37,code=sm_37 -gencode=arch=compute_70,code=sm_70 @CUDA_INCLUDES@ -I. @CUDA_CFLAGS@ -o $@ -c $<
-
-neoscrypt/cuda_neoscrypt_tpruvot.o: neoscrypt/cuda_neoscrypt_tpruvot.cu
-	$(NVCC) -gencode=arch=compute_60,code=sm_60 -gencode=arch=compute_61,code=sm_61 -gencode=arch=compute_70,code=sm_70 @CUDA_INCLUDES@ -I. $(JANSSON_INCLUDES) @CUDA_CFLAGS@ -o $@ -c $<

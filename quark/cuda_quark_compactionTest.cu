@@ -73,7 +73,7 @@ __global__ void quark_compactTest_gpu_SCAN(uint32_t *data, int width, uint32_t *
 				value = (*testFunc)(&inpHashes[id << 4]);
 			}else
 			{
-				// Nonce-Liste verfügbar
+				// Nonce-Liste verfEbar
 				int nonce = d_validNonceTable[id] - startNounce;
 				value = (*testFunc)(&inpHashes[nonce << 4]);
 			}			
@@ -98,7 +98,7 @@ __global__ void quark_compactTest_gpu_SCAN(uint32_t *data, int width, uint32_t *
 
 	for (int i=1; i<=width; i*=2)
 	{
-		uint32_t n = __shfl_up_sync(0xffffffff, (int)value, i, width);
+		uint32_t n = SHFL_UP((int)value, i, width);
 
 		if (lane_id >= i) value += n;
 	}
@@ -125,7 +125,7 @@ __global__ void quark_compactTest_gpu_SCAN(uint32_t *data, int width, uint32_t *
 
 		for (int i=1; i<=width; i*=2)
 		{
-			uint32_t n = __shfl_up_sync(0xffffffff, (int)warp_sum, i, width);
+			uint32_t n = SHFL_UP((int)warp_sum, i, width);
 
 		if (lane_id >= i) warp_sum += n;
 		}
@@ -188,7 +188,7 @@ __global__ void quark_compactTest_gpu_SCATTER(const uint32_t *sum, uint32_t *out
 			value = (*testFunc)(&inpHashes[id << 4]);
 		}else
 		{
-			// Nonce-Liste verfügbar
+			// Nonce-Liste verfEbar
 			int nonce = d_validNonceTable[id] - startNounce;
 			actNounce = nonce;
 			value = (*testFunc)(&inpHashes[nonce << 4]);

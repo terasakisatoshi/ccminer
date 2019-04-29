@@ -1,42 +1,43 @@
 /*-
- * Copyright 2005,2007,2009 Colin Percival
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- *
- * THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
- * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
- * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- * SUCH DAMAGE.
- */
+* Copyright 2005,2007,2009 Colin Percival
+* All rights reserved.
+*
+* Redistribution and use in source and binary forms, with or without
+* modification, are permitted provided that the following conditions
+* are met:
+* 1. Redistributions of source code must retain the above copyright
+*    notice, this list of conditions and the following disclaimer.
+* 2. Redistributions in binary form must reproduce the above copyright
+*    notice, this list of conditions and the following disclaimer in the
+*    documentation and/or other materials provided with the distribution.
+*
+* THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+* ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+* IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+* ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+* FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+* DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+* OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+* HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+* LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+* OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+* SUCH DAMAGE.
+*/
 
 #include <sys/types.h>
 
 #include <stdint.h>
 #include <string.h>
 
-#include "sph/sysendian.h"
+#include "miner.h"
 
-#include "sph/sha256_Y.h"
+#include "sha256_Y.h"
+#include "compat.h"
 
 /*
- * Encode a length len/4 vector of (uint32_t) into a length len vector of
- * (unsigned char) in big-endian form.  Assumes len is a multiple of 4.
- */
+* Encode a length len/4 vector of (uint32_t) into a length len vector of
+* (unsigned char) in big-endian form.  Assumes len is a multiple of 4.
+*/
 static void
 be32enc_vect(unsigned char *dst, const uint32_t *src, size_t len)
 {
@@ -47,9 +48,9 @@ be32enc_vect(unsigned char *dst, const uint32_t *src, size_t len)
 }
 
 /*
- * Decode a big-endian length len vector of (unsigned char) into a length
- * len/4 vector of (uint32_t).  Assumes len is a multiple of 4.
- */
+* Decode a big-endian length len vector of (unsigned char) into a length
+* len/4 vector of (uint32_t).  Assumes len is a multiple of 4.
+*/
 static void
 be32dec_vect(uint32_t *dst, const unsigned char *src, size_t len)
 {
@@ -85,19 +86,18 @@ be32dec_vect(uint32_t *dst, const unsigned char *src, size_t len)
 	    W[i] + k)
 
 /*
- * SHA256 block compression function.  The 256-bit state is transformed via
- * the 512-bit input block to produce a new state.
- */
+* SHA256 block compression function.  The 256-bit state is transformed via
+* the 512-bit input block to produce a new state.
+*/
 static void
 SHA256_Transform(uint32_t * state, const unsigned char block[64])
 {
-	uint32_t W[64];
-	uint32_t S[8];
+	uint32_t _ALIGN(128) W[64], S[8];
 	uint32_t t0, t1;
 	int i;
+
 	/* 1. Prepare message schedule W. */
 	be32dec_vect(W, block, 64);
-
 	for (i = 16; i < 64; i++)
 		W[i] = s1(W[i - 2]) + W[i - 7] + s0(W[i - 15]) + W[i - 16];
 
@@ -171,15 +171,14 @@ SHA256_Transform(uint32_t * state, const unsigned char block[64])
 	RNDr(S, W, 63, 0xc67178f2);
 
 	/* 4. Mix local working variables into global state */
-	for (i = 0; i < 8; i++) {
+	for (i = 0; i < 8; i++)
 		state[i] += S[i];
-	
-}
-
+#if 0
 	/* Clean the stack. */
 	memset(W, 0, 256);
 	memset(S, 0, 32);
 	t0 = t1 = 0;
+#endif
 }
 
 static unsigned char PAD[64] = {
@@ -197,9 +196,9 @@ SHA256_Pad(SHA256_CTX_Y * ctx)
 	uint32_t r, plen;
 
 	/*
-	 * Convert length to a vector of bytes -- we do this now rather
-	 * than later because the length will change after we pad.
-	 */
+	* Convert length to a vector of bytes -- we do this now rather
+	* than later because the length will change after we pad.
+	*/
 	be32enc_vect(len, ctx->count, 8);
 
 	/* Add 1--64 bytes so that the resulting length is 56 mod 64 */
@@ -240,7 +239,7 @@ SHA256_Update_Y(SHA256_CTX_Y * ctx, const void *in, size_t len)
 
 	/* Number of bytes left in the buffer from previous updates */
 	r = (ctx->count[1] >> 3) & 0x3f;
-	
+
 	/* Convert the length into a number of bits */
 	bitlen[1] = ((uint32_t)len) << 3;
 	bitlen[0] = (uint32_t)(len >> 29);
@@ -252,20 +251,17 @@ SHA256_Update_Y(SHA256_CTX_Y * ctx, const void *in, size_t len)
 
 	/* Handle the case where we don't need to perform any transforms */
 	if (len < 64 - r) {
-
 		memcpy(&ctx->buf[r], src, len);
 		return;
 	}
 
 	/* Finish the current block */
 	memcpy(&ctx->buf[r], src, 64 - r);
-	
 	SHA256_Transform(ctx->state, ctx->buf);
 	src += 64 - r;
 	len -= 64 - r;
 
 	/* Perform complete blocks */
-
 	while (len >= 64) {
 		SHA256_Transform(ctx->state, src);
 		src += 64;
@@ -277,12 +273,13 @@ SHA256_Update_Y(SHA256_CTX_Y * ctx, const void *in, size_t len)
 }
 
 /*
- * SHA-256 finalization.  Pads the input data, exports the hash value,
- * and clears the context state.
- */
+* SHA-256 finalization.  Pads the input data, exports the hash value,
+* and clears the context state.
+*/
 void
 SHA256_Final_Y(unsigned char digest[32], SHA256_CTX_Y * ctx)
 {
+
 	/* Add padding */
 	SHA256_Pad(ctx);
 
@@ -314,28 +311,26 @@ HMAC_SHA256_Init_Y(HMAC_SHA256_CTX_Y * ctx, const void * _K, size_t Klen)
 	/* Inner SHA256 operation is SHA256(K xor [block of 0x36] || data). */
 	SHA256_Init_Y(&ctx->ictx);
 	memset(pad, 0x36, 64);
-	for (i = 0; i < Klen; i++) {
+	for (i = 0; i < Klen; i++)
 		pad[i] ^= K[i];
-    }
 	SHA256_Update_Y(&ctx->ictx, pad, 64);
 
 	/* Outer SHA256 operation is SHA256(K xor [block of 0x5c] || hash). */
 	SHA256_Init_Y(&ctx->octx);
 	memset(pad, 0x5c, 64);
 	for (i = 0; i < Klen; i++)
-   {
 		pad[i] ^= K[i];
-   }
 	SHA256_Update_Y(&ctx->octx, pad, 64);
 
 	/* Clean the stack. */
-	memset(khash, 0, 32);
+	//memset(khash, 0, 32);
 }
 
 /* Add bytes to the HMAC-SHA256 operation. */
 void
 HMAC_SHA256_Update_Y(HMAC_SHA256_CTX_Y * ctx, const void *in, size_t len)
 {
+
 	/* Feed data to the inner SHA256 operation. */
 	SHA256_Update_Y(&ctx->ictx, in, len);
 }
@@ -356,27 +351,25 @@ HMAC_SHA256_Final_Y(unsigned char digest[32], HMAC_SHA256_CTX_Y * ctx)
 	SHA256_Final_Y(digest, &ctx->octx);
 
 	/* Clean the stack. */
-	memset(ihash, 0, 32);
+	//memset(ihash, 0, 32);
 }
 
 /**
- * PBKDF2_SHA256(passwd, passwdlen, salt, saltlen, c, buf, dkLen):
- * Compute PBKDF2(passwd, salt, c, dkLen) using HMAC-SHA256 as the PRF, and
- * write the output to buf.  The value dkLen must be at most 32 * (2^32 - 1).
- */
-
+* PBKDF2_SHA256(passwd, passwdlen, salt, saltlen, c, buf, dkLen):
+* Compute PBKDF2(passwd, salt, c, dkLen) using HMAC-SHA256 as the PRF, and
+* write the output to buf.  The value dkLen must be at most 32 * (2^32 - 1).
+*/
 void
 PBKDF2_SHA256(const uint8_t * passwd, size_t passwdlen, const uint8_t * salt,
-size_t saltlen, uint64_t c, uint8_t * buf, size_t dkLen)
+	size_t saltlen, uint64_t c, uint8_t * buf, size_t dkLen)
 {
 	HMAC_SHA256_CTX_Y PShctx, hctx;
-	size_t i;
+	uint8_t _ALIGN(128) T[32];
+	uint8_t _ALIGN(128) U[32];
 	uint8_t ivec[4];
-	uint8_t U[32];
-	uint8_t T[32];
+	size_t i, clen;
 	uint64_t j;
 	int k;
-	size_t clen;
 
 	/* Compute HMAC state after processing P and S. */
 	HMAC_SHA256_Init_Y(&PShctx, passwd, passwdlen);
@@ -414,5 +407,5 @@ size_t saltlen, uint64_t c, uint8_t * buf, size_t dkLen)
 	}
 
 	/* Clean PShctx, since we never called _Final on it. */
-	memset(&PShctx, 0, sizeof(HMAC_SHA256_CTX_Y));
+	//memset(&PShctx, 0, sizeof(HMAC_SHA256_CTX_Y));
 }
