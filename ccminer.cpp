@@ -3648,6 +3648,8 @@ static int msver(void)
 	}
 	if(_MSC_VER >= 1910)
 		version = 2017;
+	if(_MSC_VER >= 1920)
+		version = 2019;
 #else
 	version = 0;
 #endif
