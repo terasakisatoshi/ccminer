@@ -605,6 +605,7 @@ extern void gpulog(int prio, int thr_id, const char *fmt, ...);
 void format_hashrate(double hashrate, char *output);
 void applog(int prio, const char *fmt, ...);
 json_t *json_rpc_call(CURL *curl, const char *url, const char *userpass, const char *rpc_req, bool, bool, int *);
+void memrev(unsigned char *p, size_t len);
 void cbin2hex(char *out, const char *in, size_t len);
 char *bin2hex(const unsigned char *in, size_t len);
 bool hex2bin(unsigned char *p, const char *hexstr, size_t len);
